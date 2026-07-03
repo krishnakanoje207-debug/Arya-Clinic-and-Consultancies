@@ -1,0 +1,96 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "services": "Services",
+    "successStories": "Success Stories",
+    "testimonials": "Testimonials",
+    "research": "Research",
+    "faq": "FAQ",
+    "contact": "Contact",
+    "book": "Book Consultation"
+  },
+  "hero": {
+    "yearsSuffix": "Years — Homoeopathic Physician",
+    "ctaBook": "Book Consultation",
+    "ctaStories": "View Success Stories",
+    "casesResolved": "Cases Resolved"
+  },
+  "sections": {
+    "aboutTitle": "About the Doctor",
+    "servicesTitle": "Consultation Services",
+    "storiesTitle": "Patient Success Stories",
+    "testimonialsTitle": "What Patients Say",
+    "researchTitle": "Research & Publications",
+    "faqTitle": "Frequently Asked Questions",
+    "contactTitle": "Get in Touch"
+  },
+  "services": {
+    "duration": "Duration",
+    "fee": "Fee",
+    "minutes": "min",
+    "bookThis": "Book this",
+    "online": "Online",
+    "clinic": "Clinic",
+    "both": "Online or Clinic"
+  },
+  "booking": {
+    "title": "Book an Appointment",
+    "chooseService": "Choose a service",
+    "chooseMode": "Consultation type",
+    "modeOnline": "Online consultation",
+    "modeClinic": "Clinic visit",
+    "pickDate": "Pick a date",
+    "pickSlot": "Pick a time",
+    "noSlots": "No slots available on this day",
+    "unavailable": "Unavailable",
+    "yourDetails": "Your details",
+    "name": "Full name",
+    "phone": "Phone number",
+    "email": "Email (optional)",
+    "continue": "Continue to payment",
+    "holdNote": "Your slot is held for 15 minutes while you pay.",
+    "payTitle": "Complete your payment",
+    "payInstructions": "Pay the consultation fee via UPI, then enter your transaction (UTR) reference below.",
+    "payViaApp": "Pay via UPI app",
+    "scanQr": "Or scan this QR with any UPI app",
+    "copyUpi": "Copy UPI ID",
+    "copied": "Copied",
+    "utrLabel": "UPI transaction / UTR reference",
+    "submitUtr": "Submit payment reference",
+    "pendingTitle": "Payment received — pending verification",
+    "pendingBody": "Thank you. The doctor will verify your payment and confirm your appointment shortly. You'll get a confirmation by SMS and email.",
+    "slotTaken": "Sorry, that slot was just booked by someone else. Please pick another time.",
+    "intakeTitle": "Pre-consultation form (optional)",
+    "intakeBody": "A few questions so the doctor can prepare for your consultation.",
+    "intakeSubmit": "Submit and finish",
+    "skip": "Skip for now"
+  },
+  "intake": {
+    "chiefComplaint": "Main complaint / reason for consultation",
+    "duration": "How long have you had this?",
+    "better": "What makes it better?",
+    "worse": "What makes it worse?",
+    "history": "Past medical history",
+    "medications": "Current medications",
+    "lifestyle": "Lifestyle notes (sleep, diet, stress)"
+  },
+  "contact": {
+    "whatsapp": "Chat on WhatsApp",
+    "call": "Call",
+    "email": "Email",
+    "hours": "Consultation Hours",
+    "address": "Clinic Address"
+  },
+  "common": {
+    "language": "भाषा / Language",
+    "loading": "Loading…",
+    "required": "This field is required"
+  },
+  "footer": {
+    "disclaimer": "Medical disclaimer",
+    "privacy": "Privacy Policy",
+    "policy": "Cancellation & Reschedule Policy",
+    "rights": "All rights reserved."
+  }
+}
