@@ -1,36 +1,66 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Dr. Seema — Homoeopathy Portfolio & Booking Site
 
-## Getting Started
+Full-stack Next.js 16 (App Router, **JavaScript**) implementation of the v1.4
+plan. Zero-recurring-cost stack: Neon Postgres · Drizzle · Cloudinary ·
+Gmail SMTP · textbee Android SMS gateway · Vercel Hobby.
 
-First, run the development server:
+## Getting started
 
 ```bash
+cp .env.example .env        # fill in DATABASE_URL etc.
+npm install
+npm run db:migrate          # applies drizzle/0000_init.sql (btree_gist + EXCLUSION constraint)
+npm run db:seed             # placeholder content, FAQs, 7 notification templates, admin user
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The site renders with empty/placeholder sections even **without** a database
+(all content reads fall back safely) so the UI can be developed before Neon is
+provisioned.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Architecture
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `src/db/schema.js` — Drizzle schema (11 tables). The **EXCLUSION constraint**
+  that makes double-booking impossible lives in `drizzle/0000_init.sql` (it
+  can't be expressed in the Drizzle schema). Keep the two in sync.
+- `src/lib/booking.js` — slot generation, **lazy hold-expiry** (no scheduler),
+  race-safe booking via the exclusion constraint, UTR flow. UTC storage,
+  IST rendering (`src/lib/time.js`).
+- `src/lib/settings.js` / `src/lib/content.js` — DB-backed, admin-editable
+  content with English→Hindi fallback (`localized()`).
+- `src/app/(site)/` — public site (Hero, About, Services, Success Stories,
+  Testimonials, Research, FAQ, Contact) + `/book` flow + policy pages.
+- `src/app/admin/` — dashboard, appointments (payment verify/confirm),
+  availability, content editors, research CRUD, settings (clinic-mode +
+  research-publish toggles, UPI, contact, SMS gateway).
+- `src/app/api/cron/reminders/` — once-daily reminder batch (Vercel Hobby cron,
+  `vercel.json`), `CRON_SECRET`-protected.
+- i18n: `next-intl`, cookie-based EN/HI toggle (`messages/`).
+- PWA: `public/manifest.webmanifest` + `public/sw.js` (offline fallback).
 
-## Learn More
+## Work split (this build)
 
-To learn more about Next.js, take a look at the following resources:
+| Area | Owner | Status |
+| --- | --- | --- |
+| Scaffold, schema + migration, booking engine, public UI, admin CRUD, research, clinic mode, i18n, PWA, SEO, seeds | **Opus 4.8** | done |
+| Auth.js v5 credentials login (`/admin/login`), Account/change-password, `proxy.js` rate limiting, zod validation, per-phone hold cap | **Fable 5** | done |
+| Notification adapter (`src/lib/notify/` — Gmail SMTP + textbee SMS + `.ics`), wired to all booking events + daily reminder cron; real token reschedule (same-row move, 23P01-safe); admin confirm 23P01 handling; test-SMS button | **Fable 5** | done |
+| Bug-fix + feature batch: storage-meter `.rows`, PWA icons (`scripts/gen-icons.mjs`), mobile nav, slotLength vestige, seed idempotency, checkbox defaults, `SafeImage` host guard, templates editor, CSV export, gallery filter, sitemap/robots, Hindi stat labels, cancel cutoff; real ARYA/Dr. Seema Prajapati client data seeded | **Opus 4.8** | done |
+| Storage archival tool (`src/lib/archive.js` — deliver-then-purge, Drive optional), ARYA lotus theme + animations (Reveal, blobs, swoosh, card lifts), no-DB fallbacks with real client data, brand settings fields | **Fable 5** | done |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**All planned tasks are complete.** Remaining before launch: provision Neon,
+fill `.env`, `db:migrate` + `db:seed`, enter the client's outstanding details
+(fees, contacts, photos), deploy to Vercel.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Admin auth is real (Auth.js v5, JWT sessions, 8h expiry). Set `AUTH_SECRET`
+and run `npm run db:seed` (creates the owner account from `ADMIN_EMAIL` /
+`ADMIN_PASSWORD`) before first login.
 
-## Deploy on Vercel
+**Brand:** ARYA — "Healing starts here". Dr. Seema Prajapati (BHMS). Assets in
+`public/brand/`. UPI `seema.kanoje18-1@oksbi` seeded. Still-missing client
+details (phone/email/fees/case photos/testimonials) are admin-editable.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Next 16 notes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Turbopack is default; `cookies()`/`params`/`searchParams` are async;
+`middleware` → `proxy` (relevant to the pending security task).

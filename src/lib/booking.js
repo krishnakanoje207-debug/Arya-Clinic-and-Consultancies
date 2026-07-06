@@ -243,6 +243,21 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
 
   await expireStaleHolds();
 
+  // Anti-hoarding: one phone number may hold at most 2 unpaid slots at a
+  // time. DB-level check (rate limiting in proxy.js is only per-instance
+  // burst protection on serverless).
+  const [{ held }] = await db
+    .select({ held: sql`count(*)::int` })
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.patientPhone, patient.phone),
+        eq(appointments.status, "pending_payment"),
+        gte(appointments.holdExpiresAt, nowUtc()),
+      ),
+    );
+  if (held >= 2) return { ok: false, reason: "too_many_holds" };
+
   try {
     const [row] = await db
       .insert(appointments)
@@ -284,7 +299,7 @@ export async function submitUtr(manageToken, utr) {
     appt.status === "expired" ||
     (appt.holdExpiresAt && new Date(appt.holdExpiresAt).getTime() < now.getTime());
 
-  await db
+  const [updated] = await db
     .update(appointments)
     .set({
       utr,
@@ -292,9 +307,10 @@ export async function submitUtr(manageToken, utr) {
       needsReview: lateOrExpired,
       updatedAt: now,
     })
-    .where(eq(appointments.id, appt.id));
+    .where(eq(appointments.id, appt.id))
+    .returning();
 
-  return { ok: true, needsReview: lateOrExpired };
+  return { ok: true, needsReview: lateOrExpired, appointment: updated };
 }
 
 /** Build a upi://pay deep link and the canonical payment params for a

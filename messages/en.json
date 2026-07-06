@@ -34,6 +34,39 @@
     "clinic": "Clinic",
     "both": "Online or Clinic"
   },
+  "conditions": {
+    "title": "Conditions We Treat",
+    "subtitle": "Two decades of homoeopathic care across women's health, children, and chronic conditions.",
+    "items": [
+      "Menstrual problems",
+      "Uterine fibroids",
+      "Ovarian cysts",
+      "Paediatric care",
+      "Asthma & respiratory",
+      "Skin diseases",
+      "Diabetes",
+      "Obesity & weight",
+      "Hair loss",
+      "Lifestyle disorders"
+    ]
+  },
+  "why": {
+    "title": "Why Choose ARYA",
+    "items": [
+      {
+        "title": "20+ Years' Experience",
+        "body": "Two decades of clinical homoeopathic practice across Nagpur, Pune, and online worldwide."
+      },
+      {
+        "title": "Classical & Modern",
+        "body": "Individualised remedies chosen for your constitution, blending classical and modern homoeopathy."
+      },
+      {
+        "title": "Care Anywhere",
+        "body": "Consult online from anywhere in the world, or visit the clinic in Maharashtra."
+      }
+    ]
+  },
   "booking": {
     "title": "Book an Appointment",
     "chooseService": "Choose a service",
@@ -61,10 +94,15 @@
     "pendingTitle": "Payment received — pending verification",
     "pendingBody": "Thank you. The doctor will verify your payment and confirm your appointment shortly. You'll get a confirmation by SMS and email.",
     "slotTaken": "Sorry, that slot was just booked by someone else. Please pick another time.",
+    "tooManyHolds": "You already have bookings awaiting payment on this number. Please complete or let them expire first.",
     "intakeTitle": "Pre-consultation form (optional)",
     "intakeBody": "A few questions so the doctor can prepare for your consultation.",
     "intakeSubmit": "Submit and finish",
-    "skip": "Skip for now"
+    "skip": "Skip for now",
+    "rescheduleTitle": "Pick a new time",
+    "confirmNewTime": "Confirm new time",
+    "rescheduleDone": "Your appointment has been moved.",
+    "rescheduleFailed": "This booking can no longer be rescheduled online. Please contact the clinic."
   },
   "intake": {
     "chiefComplaint": "Main complaint / reason for consultation",
@@ -85,7 +123,8 @@
   "common": {
     "language": "भाषा / Language",
     "loading": "Loading…",
-    "required": "This field is required"
+    "required": "This field is required",
+    "send": "Send message"
   },
   "footer": {
     "disclaimer": "Medical disclaimer",

@@ -101,6 +101,9 @@ export const availabilityRules = pgTable("availability_rules", {
   weekday: integer("weekday").notNull(), // 0 = Sunday … 6 = Saturday (IST)
   startTime: time("start_time").notNull(), // IST wall clock
   endTime: time("end_time").notNull(), // IST wall clock
+  // Vestigial: actual slot length is the booked service's durationMinutes
+  // (see getServiceCalendar). Column kept (defaults to 30) but not editable
+  // in admin — services of different durations share one weekly window.
   slotLengthMinutes: integer("slot_length_minutes").notNull(),
   mode: consultationMode("mode").notNull().default("online"),
   active: boolean("active").notNull().default(true),

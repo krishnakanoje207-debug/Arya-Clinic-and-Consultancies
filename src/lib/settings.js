@@ -1,5 +1,5 @@
-import { db } from "@/db";
-import { settings } from "@/db/schema";
+import { db } from "../db/index.js";
+import { settings } from "../db/schema.js";
 import { inArray } from "drizzle-orm";
 
 /**
@@ -10,31 +10,43 @@ import { inArray } from "drizzle-orm";
 export const SETTINGS_DEFAULTS = {
   site_mode: "online", // "online" | "online+clinic"
   research_published: false,
-  upi_id: "",
-  upi_number: "",
-  payee_name: "",
+  cancel_cutoff_hours: 4, // no online cancel/reschedule within N hours of start
+  brand_name: "ARYA",
+  brand_tagline: "Healing starts here",
+  // Real client values double as code-level fallbacks so the site renders
+  // fully before the DB is provisioned; the admin panel overrides them.
+  upi_id: "seema.kanoje18-1@oksbi",
+  upi_number: "8999758063",
+  payee_name: "Dr. Seema Prajapati",
   clinic_address: "",
   maps_embed_url: "",
   notice_banner: "",
-  contact_phone: "",
-  contact_whatsapp: "",
+  contact_phone: "+91 89997 58063",
+  contact_whatsapp: "918999758063",
   contact_email: "",
   social_links: [],
-  consultation_hours: "",
-  seo_title: "Dr. Seema — Homoeopathic Physician",
+  consultation_hours:
+    "By appointment · Online (worldwide) and clinic (Nagpur & Pune)",
+  seo_title: "ARYA Homoeopathy — Dr. Seema Prajapati (BHMS)",
   seo_description:
-    "Book online homoeopathy consultations with Dr. Seema. Gentle, individualised treatment for chronic and acute conditions.",
+    "Book online homoeopathy consultations with Dr. Seema Prajapati (BHMS), 20 years' experience. Women's health, paediatric, respiratory, skin and lifestyle disorders. Nagpur & Pune, and worldwide online.",
   medical_disclaimer:
     "Information on this site is for general awareness and is not a substitute for professional medical advice. Individual results vary.",
 };
 
-/** Read many settings at once, merged over defaults. */
+/** Read many settings at once, merged over defaults. Falls back to pure
+ * defaults if the DB is unreachable (e.g. build time before provisioning). */
 export async function getSettings(keys = Object.keys(SETTINGS_DEFAULTS)) {
-  const rows = await db
-    .select()
-    .from(settings)
-    .where(inArray(settings.key, keys));
-  const found = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  let found = {};
+  try {
+    const rows = await db
+      .select()
+      .from(settings)
+      .where(inArray(settings.key, keys));
+    found = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  } catch {
+    found = {};
+  }
   const out = {};
   for (const k of keys) {
     out[k] = k in found ? found[k] : SETTINGS_DEFAULTS[k];

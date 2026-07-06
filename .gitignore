@@ -24,14 +24,18 @@
 .DS_Store
 *.pem
 
-# debug
+# debug / dev logs — never commit logs of any kind
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+*.log
+logs/
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...but the template must stay committed
+!.env.example
 
 # vercel
 .vercel
