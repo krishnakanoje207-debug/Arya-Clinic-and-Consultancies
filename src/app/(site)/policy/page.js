@@ -18,14 +18,14 @@ export default async function PolicyPage() {
         </p>
         <ul className="list-disc pl-5 space-y-2">
           <li>
-            <strong className="text-ink">Rescheduling</strong> is free up to{" "}
-            {cutoff} hours before your slot, subject to availability. Within{" "}
+            <strong className="text-ink">Rescheduling</strong> is possible up
+            to {cutoff} hours before your slot, subject to availability. Within{" "}
             {cutoff} hours of a confirmed appointment, please contact the clinic
             directly.
           </li>
           <li>
-            <strong className="text-ink">Cancellations</strong> free your slot
-            immediately so another patient can book it. Confirmed appointments
+            <strong className="text-ink">Cancellations</strong> release your
+            slot immediately so another patient can book it. Confirmed appointments
             can be cancelled online up to {cutoff} hours before the start time.
           </li>
           <li>

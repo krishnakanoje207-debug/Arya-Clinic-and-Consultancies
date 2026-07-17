@@ -131,6 +131,12 @@ export default function SettingsForm({ settings }) {
         <Field label="Phone" name="contact_phone" defaultValue={s.contact_phone} />
         <Field label="WhatsApp number" name="contact_whatsapp" defaultValue={s.contact_whatsapp} hint="Digits only; used for the wa.me link." />
         <Field label="Email" name="contact_email" defaultValue={s.contact_email} />
+        <Field
+          label="Google reviews link"
+          name="google_reviews_url"
+          defaultValue={s.google_reviews_url}
+          hint="Google Business review URL. Shows a 'Review us on Google' badge on the testimonials page + footer. Leave empty to hide."
+        />
         <Field label="Consultation hours" name="consultation_hours" defaultValue={s.consultation_hours} />
       </Section>
 
@@ -151,6 +157,12 @@ export default function SettingsForm({ settings }) {
 
       <Section title="Site content">
         <Field label="Notice banner" name="notice_banner" defaultValue={s.notice_banner} hint="Shown across the top of the site. Leave empty to hide." />
+        <Field
+          label="Homepage background photo"
+          name="home_bg_image"
+          defaultValue={s.home_bg_image}
+          hint="Full-width photo behind the hero + About sections. Paste an image URL (or a /photos/… path). Leave the default for the clinic photo."
+        />
         <Field label="SEO title" name="seo_title" defaultValue={s.seo_title} />
         <Field label="SEO description" name="seo_description" defaultValue={s.seo_description} textarea />
         <Field label="Medical disclaimer" name="medical_disclaimer" defaultValue={s.medical_disclaimer} textarea />

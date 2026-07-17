@@ -53,3 +53,16 @@ export const contactSchema = z.object({
 
 /** Manage tokens are UUIDs we generated — reject anything else early. */
 export const tokenSchema = z.string().uuid();
+
+/** Quiz lead: only the slug, phone and raw answers are trusted from the
+ * client. The server recomputes score/result from the answers against the
+ * quiz definition, so no score is accepted from the browser. Answers are
+ * bounded (index 0–3, at most one per question) to keep the payload sane. */
+export const quizLeadSchema = z.object({
+  quizSlug: z.string().trim().min(1).max(64),
+  phone: z
+    .string()
+    .trim()
+    .regex(/^\+?[0-9][0-9 \-]{5,17}$/, "invalid phone"),
+  answers: z.array(z.number().int().min(0).max(3)).min(1).max(30),
+});

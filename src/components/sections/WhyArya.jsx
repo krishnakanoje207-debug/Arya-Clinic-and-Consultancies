@@ -10,7 +10,7 @@ export default async function WhyArya() {
   const items = t.raw("items");
 
   return (
-    <section className="bg-cream-deep">
+    <section id="why" className="bg-cream-deep scroll-mt-28">
       <div className="mx-auto max-w-7xl px-4 py-14">
         <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8 text-center">
           <span className="title-accent">{t("title")}</span>

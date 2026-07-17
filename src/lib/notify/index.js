@@ -108,3 +108,30 @@ export async function dispatchNotification(event, appt, opts = {}) {
     console.error(`[notify] ${event} dispatch failed:`, err?.message || err);
   }
 }
+
+/**
+ * Notify the doctor of a new self-assessment quiz lead (T8). The quiz lead
+ * has no appointment/service, so a hardcoded render is simpler than a
+ * templated event — it reuses the same doctor-inbox mechanism the booking
+ * flow uses (email to GMAIL_USER). Never throws: a notification failure
+ * must not fail the lead capture. SMS is intentionally not sent to the
+ * doctor here — the booking flow doesn't SMS the doctor either.
+ */
+export async function dispatchLeadNotification(lead) {
+  try {
+    if (!process.env.GMAIL_USER) return;
+    const admin = `${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/quiz-leads`;
+    await sendEmail({
+      to: process.env.GMAIL_USER,
+      subject: `[Site] New quiz lead: ${lead.quizName} (${lead.resultKey})`,
+      text:
+        `NEW SELF-CHECK LEAD\n` +
+        `Quiz: ${lead.quizName}\n` +
+        `Phone: ${lead.phone}\n` +
+        `Result: ${lead.resultKey} (${lead.score}/${lead.maxScore})\n` +
+        `Admin: ${admin}`,
+    });
+  } catch (err) {
+    console.error(`[notify] quiz lead dispatch failed:`, err?.message || err);
+  }
+}

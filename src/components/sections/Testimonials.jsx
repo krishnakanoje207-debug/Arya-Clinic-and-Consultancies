@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { localized } from "@/lib/content";
 
@@ -16,11 +17,19 @@ export default async function Testimonials({ testimonials, locale }) {
   if (!testimonials?.length) return null;
 
   return (
-    <section id="testimonials" className="bg-cream-deep scroll-mt-20">
+    <section id="testimonials" className="bg-cream-deep scroll-mt-28">
       <div className="mx-auto max-w-7xl px-4 py-14">
-        <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8">
-          <span className="title-accent">{t("testimonialsTitle")}</span>
-        </h2>
+        <div className="flex items-end justify-between gap-4 mb-8">
+          <h2 className="font-display text-3xl text-sage-deep font-semibold">
+            <span className="title-accent">{t("testimonialsTitle")}</span>
+          </h2>
+          <Link
+            href="/testimonials"
+            className="shrink-0 text-sm font-semibold text-sage-deep hover:text-terracotta transition"
+          >
+            {t("viewAll")} →
+          </Link>
+        </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {testimonials.map((tm) => (
             <blockquote key={tm.id} className="card-warm card-lift p-6">

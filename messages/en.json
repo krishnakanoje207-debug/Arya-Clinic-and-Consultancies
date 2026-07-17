@@ -7,8 +7,31 @@
     "testimonials": "Testimonials",
     "research": "Research",
     "faq": "FAQ",
+    "faqs": "FAQs",
     "contact": "Contact",
-    "book": "Book Consultation"
+    "book": "Book Consultation",
+    "callNow": "Call Now"
+  },
+  "mega": {
+    "conditionsTitle": "Conditions We Treat",
+    "aryaWayTitle": "The ARYA Way",
+    "selfCheck": "Self-Check",
+    "viewAllConditions": "View all conditions",
+    "howWeTreat": "How we treat",
+    "theDoctor": "The doctor",
+    "yourPath": "Your Path to Healing",
+    "whyArya": "Why ARYA",
+    "servicesFees": "Services & Fees",
+    "aboutDoctor": "About Dr. Seema",
+    "credentials": "Credentials",
+    "faqs": "FAQs",
+    "cat": {
+      "womens": "Women's Health",
+      "child": "Child Health",
+      "respiratory": "Respiratory",
+      "skin": "Skin & Hair",
+      "more": "More"
+    }
   },
   "hero": {
     "yearsSuffix": "Years — Homoeopathic Physician",
@@ -23,7 +46,20 @@
     "testimonialsTitle": "What Patients Say",
     "researchTitle": "Research & Publications",
     "faqTitle": "Frequently Asked Questions",
-    "contactTitle": "Get in Touch"
+    "contactTitle": "Get in Touch",
+    "viewAll": "View all",
+    "sources": "Sources"
+  },
+  "testimonialsPage": {
+    "heroTitle": "Patient Stories & Testimonials",
+    "heroIntro": "Real experiences from people Dr. Seema has cared for — before-and-after journeys, written notes and video messages. Shared with consent.",
+    "storiesHeading": "Before & After Journeys",
+    "testimonialsHeading": "In Their Own Words",
+    "allLabel": "All",
+    "watchVideo": "Watch video",
+    "ctaTitle": "Your story could be next",
+    "ctaBody": "Book a consultation with Dr. Seema — online from anywhere, or at the clinic in Maharashtra.",
+    "empty": "Patient stories will appear here soon."
   },
   "services": {
     "duration": "Duration",
@@ -35,20 +71,64 @@
     "both": "Online or Clinic"
   },
   "conditions": {
-    "title": "Conditions We Treat",
-    "subtitle": "Two decades of homoeopathic care across women's health, children, and chronic conditions.",
-    "items": [
-      "Menstrual problems",
-      "Uterine fibroids",
-      "Ovarian cysts",
-      "Paediatric care",
-      "Asthma & respiratory",
-      "Skin diseases",
-      "Diabetes",
-      "Obesity & weight",
-      "Hair loss",
-      "Lifestyle disorders"
-    ]
+    "title": "What We Treat",
+    "subtitle": "Behind every symptom is a person. We look at your whole story — body, history and daily life — to support your health with individualised homoeopathic care across women's health, children, and chronic conditions.",
+    "learnMore": "Learn more"
+  },
+  "stories": {
+    "title": "Stories of Hope: Real People, Real Results",
+    "intro": "Shared with consent — a look at the journeys of people cared for at ARYA.",
+    "condition": "Condition",
+    "duration": "Duration",
+    "city": "City",
+    "readMore": "read more",
+    "readLess": "show less",
+    "prev": "Previous story",
+    "next": "Next story",
+    "realImages": "*Real patient images, shared with consent",
+    "viewAll": "View All Success Stories"
+  },
+  "conditionPage": {
+    "breadcrumbConditions": "Conditions",
+    "symptoms": "Symptoms",
+    "causes": "Common causes",
+    "approach": "How homoeopathy helps",
+    "relatedStories": "Related stories",
+    "faqs": "FAQs",
+    "sources": "Sources",
+    "ctaTitle": "Ready to begin your care?",
+    "ctaBody": "Book a consultation with Dr. Seema — online from anywhere, or at the clinic in Maharashtra.",
+    "disclaimer": "Educational information only, not a substitute for professional medical advice. Please consult a qualified doctor for diagnosis and treatment."
+  },
+  "selfCheck": {
+    "tag": "Private · 2 minutes",
+    "title": "Not sure where to start?",
+    "body": "Take our women's health self-check — a short, private set of questions on menstrual and hormonal health that helps you see whether it may be worth talking to a doctor.",
+    "cta": "Take the self-check"
+  },
+  "quiz": {
+    "eyebrow": "Quick self-check",
+    "heroTitle": "Women's Health Self-Check",
+    "heroIntro": "A short, private set of questions about menstrual and hormonal health. It takes about two minutes and gives you a general sense of whether it may be worth talking to a doctor. Your answers are not saved unless you choose to share your number.",
+    "progress": "Question {current} of {total}",
+    "previous": "Back",
+    "next": "Next",
+    "seeResult": "See my result",
+    "resultLabel": "Your result",
+    "scoreLabel": "Your score: {score} of {total}",
+    "discussCta": "Discuss your result",
+    "restart": "Start over",
+    "phoneHeading": "Would you like the doctor's team to call you back?",
+    "phoneBody": "Share your phone number and Dr. Seema's team will reach out to help you understand your result. This is optional.",
+    "phonePlaceholder": "Your phone number",
+    "phoneSubmit": "Request a call back",
+    "phoneSubmitting": "Sending…",
+    "phoneSuccess": "Thank you. The doctor's team will contact you soon.",
+    "phoneError": "Please enter a valid phone number.",
+    "phoneUnavailable": "We couldn't save that just now. Please call or message us and we'll be glad to help.",
+    "callFallback": "Call the clinic",
+    "whatsappFallback": "Chat on WhatsApp",
+    "disclaimer": "This self-assessment is for general awareness only. It is not a diagnosis or medical advice, and does not replace consultation with a qualified doctor. If you have severe or worrying symptoms, please seek medical care promptly."
   },
   "why": {
     "title": "Why Choose ARYA",
@@ -118,7 +198,40 @@
     "call": "Call",
     "email": "Email",
     "hours": "Consultation Hours",
-    "address": "Clinic Address"
+    "address": "Clinic Address",
+    "regNo": "Reg. No."
+  },
+  "credentials": {
+    "qualifications": "Qualifications",
+    "experience": "Years of practice",
+    "registration": "Registration",
+    "memberships": "Memberships",
+    "years": "years"
+  },
+  "healingPath": {
+    "eyebrow": "Our Treatment Approach",
+    "title": "Your Path to Healing",
+    "subtitle": "A calm, step-by-step homoeopathic journey — from understanding your case to steady, guided recovery.",
+    "holistic": "Every plan considers the whole person — not just the complaint. Diet, sleep, stress and daily routine are part of the conversation, so care fits your life and supports lasting wellbeing.",
+    "chatWhatsapp": "Chat on WhatsApp",
+    "steps": [
+      {
+        "title": "Detailed first consultation",
+        "body": "An unhurried case-taking that covers your medical history, lifestyle and emotional health — so treatment fits you as a whole person, not just a symptom."
+      },
+      {
+        "title": "Personalised homoeopathic remedy",
+        "body": "An individualised prescription chosen to address the root cause of your condition, based on your unique symptom picture and constitution."
+      },
+      {
+        "title": "Follow-up & progress tracking",
+        "body": "Scheduled reviews to track your response, adjust the remedy as you improve, and offer lifestyle guidance for lasting results."
+      }
+    ]
+  },
+  "sticky": {
+    "book": "Book",
+    "waMessage": "Hello Dr. Seema, I'd like to book a consultation."
   },
   "common": {
     "language": "भाषा / Language",
@@ -130,6 +243,11 @@
     "disclaimer": "Medical disclaimer",
     "privacy": "Privacy Policy",
     "policy": "Cancellation & Reschedule Policy",
-    "rights": "All rights reserved."
+    "rights": "All rights reserved.",
+    "conditionsHeading": "Conditions we treat",
+    "quickLinks": "Quick links",
+    "tools": "Self-assessment tools",
+    "clinicInfo": "Clinic info",
+    "googleReview": "Review us on Google"
   }
 }

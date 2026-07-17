@@ -10,7 +10,7 @@ export default async function Contact({ settings }) {
     : null;
 
   return (
-    <section id="contact" className="bg-cream scroll-mt-20">
+    <section id="contact" className="bg-cream scroll-mt-28">
       <div className="mx-auto max-w-7xl px-4 py-14">
       <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8">
         <span className="title-accent">{t("sections.contactTitle")}</span>

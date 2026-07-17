@@ -16,6 +16,13 @@ import {
 
 export const dynamic = "force-dynamic";
 
+// Serialize a jsonb [{title,url}] array into the "Title | URL" per-line
+// textarea format the server action parses (same idiom as conditions).
+const refLines = (arr) =>
+  (Array.isArray(arr) ? arr : [])
+    .map((r) => [r.title, r.url].filter(Boolean).join(" | "))
+    .join("\n");
+
 const MODE_OPTIONS = [
   { value: "online", label: "Online" },
   { value: "clinic", label: "Clinic" },
@@ -77,7 +84,7 @@ export default async function AdminContent() {
 
       <EntityManager
         title="FAQs"
-        items={faqRows}
+        items={faqRows.map((f) => ({ ...f, references: refLines(f.references) }))}
         upsertAction={upsertFaq}
         deleteAction={deleteFaq}
         addLabel="Add FAQ"
@@ -92,6 +99,13 @@ export default async function AdminContent() {
           { name: "answer", label: "Answer", type: "textarea", fullWidth: true },
           { name: "answerHi", label: "Answer (Hindi)", type: "textarea", fullWidth: true },
           { name: "category", label: "Category", type: "select", options: FAQ_CATEGORIES },
+          {
+            name: "references",
+            label: "Sources / references",
+            type: "textarea",
+            hint: "Optional. One per line: Title | URL",
+            fullWidth: true,
+          },
           { name: "sortOrder", label: "Sort order", type: "number" },
           { name: "published", label: "Published", type: "checkbox", defaultChecked: true },
         ]}
@@ -113,6 +127,8 @@ export default async function AdminContent() {
           { name: "rating", label: "Rating (1–5)", type: "number" },
           { name: "text", label: "Testimonial", type: "textarea", fullWidth: true },
           { name: "textHi", label: "Testimonial (Hindi)", type: "textarea", fullWidth: true },
+          { name: "condition", label: "Condition (for filter chips)", hint: "e.g. PCOS, Migraine — optional" },
+          { name: "videoUrl", label: "Video URL", hint: "YouTube link embeds; other links open in a new tab. Optional." },
           { name: "photo", label: "Photo", type: "image", fullWidth: true },
           { name: "sortOrder", label: "Sort order", type: "number" },
           { name: "consentConfirmed", label: "Consent obtained", type: "checkbox" },
@@ -139,6 +155,7 @@ export default async function AdminContent() {
           { name: "beforeImage", label: "Before image", type: "image" },
           { name: "afterImage", label: "After image", type: "image" },
           { name: "treatmentDuration", label: "Treatment duration" },
+          { name: "city", label: "City", hint: "Optional — e.g. Nagpur" },
           { name: "sortOrder", label: "Sort order", type: "number" },
           { name: "consentConfirmed", label: "Signed consent obtained (required to publish)", type: "checkbox", fullWidth: true },
           { name: "published", label: "Published", type: "checkbox" },

@@ -23,6 +23,8 @@ export async function saveSettings(prevState, formData) {
     "contact_phone",
     "contact_whatsapp",
     "contact_email",
+    "google_reviews_url",
+    "home_bg_image",
     "consultation_hours",
     "seo_title",
     "seo_description",

@@ -6,6 +6,7 @@ import { db } from "@/db";
 import {
   availabilityRules,
   caseGallery,
+  conditions,
   faqs,
   profile,
   services,
@@ -30,6 +31,7 @@ const int = (fd, k) => {
 const bool = (fd, k) => Boolean(fd.get(k));
 const refresh = () => {
   revalidatePath("/");
+  revalidatePath("/testimonials");
   revalidatePath("/admin/content");
 };
 
@@ -52,6 +54,10 @@ export async function saveProfile(prevState, fd) {
       const [label, value] = line.split("|").map((x) => x?.trim());
       return { label, value: value || "" };
     });
+  const memberships = String(fd.get("memberships") || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
 
   const values = {
     name: str(fd, "name") || "Dr. Seema",
@@ -63,6 +69,7 @@ export async function saveProfile(prevState, fd) {
     stats,
     registrationNumber: str(fd, "registrationNumber"),
     registrationCouncil: str(fd, "registrationCouncil"),
+    memberships,
     yearsExperience: int(fd, "yearsExperience"),
     heroImage: str(fd, "heroImage"),
     aboutImage: str(fd, "aboutImage"),
@@ -110,12 +117,18 @@ export async function deleteService(id) {
 export async function upsertFaq(prevState, fd) {
   await guard();
   const id = int(fd, "id");
+  // references: one "title | url" per line (same idiom as conditions).
+  const references = lines(fd, "references").map((line) => {
+    const [title, url] = line.split("|").map((x) => x?.trim());
+    return { title: title || "", url: url || "" };
+  });
   const values = {
     question: str(fd, "question") || "",
     questionHi: str(fd, "questionHi"),
     answer: str(fd, "answer") || "",
     answerHi: str(fd, "answerHi"),
     category: str(fd, "category") || "About homoeopathy",
+    references,
     sortOrder: int(fd, "sortOrder") || 0,
     published: bool(fd, "published"),
   };
@@ -140,6 +153,8 @@ export async function upsertTestimonial(prevState, fd) {
     textHi: str(fd, "textHi"),
     rating: int(fd, "rating"),
     photo: str(fd, "photo"),
+    videoUrl: str(fd, "videoUrl"),
+    condition: str(fd, "condition"),
     consentConfirmed: bool(fd, "consentConfirmed"),
     published: bool(fd, "published"),
     sortOrder: int(fd, "sortOrder") || 0,
@@ -168,6 +183,7 @@ export async function upsertCase(prevState, fd) {
     beforeImage: str(fd, "beforeImage"),
     afterImage: str(fd, "afterImage"),
     treatmentDuration: str(fd, "treatmentDuration"),
+    city: str(fd, "city"),
     consentConfirmed: consent,
     // Cannot publish without consent (compliance — plan §6).
     published: consent && bool(fd, "published"),
@@ -182,6 +198,81 @@ export async function deleteCase(id) {
   await guard();
   await db.delete(caseGallery).where(eq(caseGallery.id, Number(id)));
   refresh();
+}
+
+/* ---------- Conditions (detail pages) ---------- */
+// One-per-line textareas parsed into jsonb arrays. Field order per line:
+//   symptoms / causes: text | text_hi
+//   faqs:              q | q_hi | a | a_hi
+//   references:        title | url
+const lines = (fd, k) =>
+  String(fd.get(k) || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+const slugify = (s) =>
+  String(s)
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+export async function upsertCondition(prevState, fd) {
+  await guard();
+  const id = int(fd, "id");
+  const textPairs = (k) =>
+    lines(fd, k).map((line) => {
+      const [text, text_hi] = line.split("|").map((x) => x?.trim());
+      return { text, text_hi: text_hi || "" };
+    });
+  const faqRows = lines(fd, "faqs").map((line) => {
+    const [q, q_hi, a, a_hi] = line.split("|").map((x) => x?.trim());
+    return { q: q || "", q_hi: q_hi || "", a: a || "", a_hi: a_hi || "" };
+  });
+  const refRows = lines(fd, "references").map((line) => {
+    const [title, url] = line.split("|").map((x) => x?.trim());
+    return { title: title || "", url: url || "" };
+  });
+
+  const name = str(fd, "name") || "Condition";
+  const slug = slugify(str(fd, "slug") || name);
+  if (!slug) return { ok: false, error: "A URL slug is required" };
+
+  const values = {
+    slug,
+    name,
+    nameHi: str(fd, "nameHi"),
+    intro: str(fd, "intro"),
+    introHi: str(fd, "introHi"),
+    overview: str(fd, "overview"),
+    overviewHi: str(fd, "overviewHi"),
+    symptoms: textPairs("symptoms"),
+    causes: textPairs("causes"),
+    approach: str(fd, "approach"),
+    approachHi: str(fd, "approachHi"),
+    faqs: faqRows,
+    references: refRows,
+    cardImage: str(fd, "cardImage"),
+    sortOrder: int(fd, "sortOrder") || 0,
+    published: bool(fd, "published"),
+  };
+
+  try {
+    if (id) await db.update(conditions).set(values).where(eq(conditions.id, id));
+    else await db.insert(conditions).values(values);
+  } catch {
+    return { ok: false, error: "Could not save — is the URL slug unique?" };
+  }
+  refresh();
+  revalidatePath(`/conditions/${slug}`);
+  revalidatePath("/admin/conditions");
+  return { ok: true };
+}
+export async function deleteCondition(id) {
+  await guard();
+  await db.delete(conditions).where(eq(conditions.id, Number(id)));
+  refresh();
+  revalidatePath("/admin/conditions");
 }
 
 /* ---------- Availability rules & overrides ---------- */

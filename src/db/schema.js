@@ -69,6 +69,7 @@ export const profile = pgTable("profile", {
   degrees: jsonb("degrees").notNull().default([]), // [{title, institution, year}]
   registrationNumber: text("registration_number"),
   registrationCouncil: text("registration_council"),
+  memberships: jsonb("memberships").notNull().default([]), // ["Member, ..."]
   yearsExperience: integer("years_experience"),
   stats: jsonb("stats").notNull().default([]), // [{label, label_hi, value}]
   heroImage: text("hero_image"), // Cloudinary public id / URL
@@ -182,6 +183,7 @@ export const faqs = pgTable("faqs", {
   answer: text("answer").notNull(), // rich text (markdown)
   answerHi: text("answer_hi"),
   category: text("category").notNull(), // About homoeopathy / Booking & payment / Consultations
+  references: jsonb("references").notNull().default([]), // [{ title, url }] — optional Sources list
   sortOrder: integer("sort_order").notNull().default(0),
   published: boolean("published").notNull().default(true),
 });
@@ -195,9 +197,36 @@ export const caseGallery = pgTable("case_gallery", {
   beforeImage: text("before_image"),
   afterImage: text("after_image"),
   treatmentDuration: text("treatment_duration"),
+  city: text("city"), // optional patient city (social-proof metadata)
   consentConfirmed: boolean("consent_confirmed").notNull().default(false), // mandatory before publish (compliance)
   published: boolean("published").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/** One row per condition the doctor treats. Powers /conditions/[slug]
+ * detail pages and the homepage Conditions grid. *_hi columns are optional
+ * Hindi variants (renderers fall back to English). jsonb arrays:
+ *   symptoms/causes: [{ text, text_hi }]
+ *   faqs:            [{ q, q_hi, a, a_hi }]
+ *   references:      [{ title, url }]  (external Sources list) */
+export const conditions = pgTable("conditions", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(), // url-safe
+  name: text("name").notNull(),
+  nameHi: text("name_hi"),
+  intro: text("intro"), // short hero paragraph
+  introHi: text("intro_hi"),
+  overview: text("overview"),
+  overviewHi: text("overview_hi"),
+  symptoms: jsonb("symptoms").notNull().default([]),
+  causes: jsonb("causes").notNull().default([]),
+  approach: text("approach"), // how homoeopathy addresses it
+  approachHi: text("approach_hi"),
+  faqs: jsonb("faqs").notNull().default([]),
+  references: jsonb("references").notNull().default([]),
+  cardImage: text("card_image"), // photo shown on the homepage "What We Treat" arch card
+  sortOrder: integer("sort_order").notNull().default(0),
+  published: boolean("published").notNull().default(false),
 });
 
 export const testimonials = pgTable("testimonials", {
@@ -207,6 +236,8 @@ export const testimonials = pgTable("testimonials", {
   textHi: text("text_hi"),
   rating: integer("rating"),
   photo: text("photo"),
+  videoUrl: text("video_url"), // optional YouTube (lazy embed) or other link
+  condition: text("condition"), // optional condition tag for filter chips
   consentConfirmed: boolean("consent_confirmed").notNull().default(false),
   published: boolean("published").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -244,6 +275,23 @@ export const contactMessages = pgTable("contact_messages", {
   email: text("email"),
   message: text("message").notNull(),
   read: boolean("read").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Optional lead captured from a self-assessment quiz (T8). The quiz itself
+ * is data-module-driven and needs no DB; only this opt-in phone capture
+ * writes a row, so the doctor can follow up. quiz_name / result snapshot the
+ * outcome at submission time for the admin list. */
+export const quizLeads = pgTable("quiz_leads", {
+  id: serial("id").primaryKey(),
+  quizSlug: text("quiz_slug").notNull(),
+  quizName: text("quiz_name").notNull(),
+  phone: text("phone").notNull(),
+  resultKey: text("result_key").notNull(), // low | moderate | significant
+  score: integer("score").notNull(),
+  maxScore: integer("max_score").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

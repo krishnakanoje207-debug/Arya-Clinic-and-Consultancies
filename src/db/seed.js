@@ -12,6 +12,7 @@ import {
   adminUsers,
   availabilityRules,
   caseGallery,
+  conditions,
   faqs,
   messageTemplates,
   profile,
@@ -21,6 +22,7 @@ import {
   testimonials,
 } from "./schema.js";
 import { SETTINGS_DEFAULTS } from "../lib/settings.js";
+import { CONDITIONS_SEED } from "../lib/conditions-data.js";
 import { sql } from "drizzle-orm";
 
 /** True if the table already has ≥1 row — lets seeders no-op on re-run.
@@ -63,6 +65,7 @@ async function seedProfile() {
       ],
       registrationNumber: "",
       registrationCouncil: "Maharashtra Council of Homoeopathy",
+      memberships: [],
       yearsExperience: 20,
       stats: [
         { label: "Years Experience", label_hi: "वर्षों का अनुभव", value: "20+" },
@@ -164,6 +167,13 @@ async function seedFaqs() {
   }
 }
 
+async function seedConditions() {
+  if (await hasRows(conditions)) return;
+  for (const c of CONDITIONS_SEED) {
+    await db.insert(conditions).values(c).onConflictDoNothing();
+  }
+}
+
 async function seedPlaceholderShowcase() {
   if (!(await hasRows(testimonials)))
     await db
@@ -250,6 +260,7 @@ async function main() {
   await seedServices();
   await seedAvailability();
   await seedFaqs();
+  await seedConditions();
   await seedPlaceholderShowcase();
   await seedTemplates();
   await seedAdmin();

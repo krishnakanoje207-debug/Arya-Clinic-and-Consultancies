@@ -3,10 +3,18 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-/** Hamburger menu for < md screens. The desktop nav (in SiteHeader) is
- * hidden on mobile; this disclosure replaces it. */
-export default function MobileNav({ links, bookLabel, menuLabel = "Menu" }) {
+/** Hamburger menu for < lg screens. The desktop mega-nav (SiteHeader ▸
+ * DesktopNav) is hidden on mobile; this disclosure replaces it and adds a
+ * collapsible "Conditions we treat" group. */
+export default function MobileNav({
+  links,
+  conditionLinks = [],
+  conditionsLabel = "Conditions we treat",
+  bookLabel,
+  menuLabel = "Menu",
+}) {
   const [open, setOpen] = useState(false);
+  const [condOpen, setCondOpen] = useState(false);
 
   // Close on Escape and lock nothing else — keep it lightweight.
   useEffect(() => {
@@ -17,7 +25,7 @@ export default function MobileNav({ links, bookLabel, menuLabel = "Menu" }) {
   }, [open]);
 
   return (
-    <div className="md:hidden">
+    <div className="lg:hidden">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -35,18 +43,48 @@ export default function MobileNav({ links, bookLabel, menuLabel = "Menu" }) {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-16 bg-cream border-b border-[var(--border)] shadow-lg">
-          <nav className="mx-auto max-w-6xl px-4 py-3 flex flex-col">
+        <div className="absolute left-0 right-0 top-16 bg-cream border-b border-[var(--border)] shadow-lg max-h-[80vh] overflow-y-auto">
+          <nav className="mx-auto max-w-7xl px-4 py-3 flex flex-col">
             {links.map(([href, label]) => (
               <Link
                 key={href}
                 href={href}
                 onClick={() => setOpen(false)}
-                className="py-3 text-ink border-b border-[var(--border)] last:border-0"
+                className="py-3 text-ink border-b border-[var(--border)]"
               >
                 {label}
               </Link>
             ))}
+
+            {conditionLinks.length ? (
+              <div className="border-b border-[var(--border)]">
+                <button
+                  type="button"
+                  onClick={() => setCondOpen((o) => !o)}
+                  aria-expanded={condOpen}
+                  className="w-full flex items-center justify-between py-3 text-ink"
+                >
+                  {conditionsLabel}
+                  <span className={`transition-transform ${condOpen ? "rotate-45" : ""}`}>+</span>
+                </button>
+                {condOpen && (
+                  <ul className="pb-2">
+                    {conditionLinks.map(([href, label]) => (
+                      <li key={href}>
+                        <Link
+                          href={href}
+                          onClick={() => setOpen(false)}
+                          className="block py-2 pl-4 text-sm text-ink-soft"
+                        >
+                          {label}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
+
             <Link
               href="/book"
               onClick={() => setOpen(false)}

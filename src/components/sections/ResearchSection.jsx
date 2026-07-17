@@ -16,7 +16,7 @@ export default async function ResearchSection({ items, locale }) {
   if (!items?.length) return null;
 
   return (
-    <section id="research" className="bg-cream scroll-mt-20">
+    <section id="research" className="bg-cream scroll-mt-28">
       <div className="mx-auto max-w-7xl px-4 py-14">
       <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8">
         <span className="title-accent">{t("researchTitle")}</span>

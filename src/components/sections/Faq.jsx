@@ -38,6 +38,30 @@ export default async function Faq({ faqs, locale }) {
                   <p className="faq-answer mt-3 text-sm text-ink-soft whitespace-pre-line">
                     {localized(f, "answer", locale)}
                   </p>
+                  {Array.isArray(f.references) &&
+                  f.references.some((r) => r?.url && r?.title) ? (
+                    <div className="mt-3 border-t border-[var(--border)] pt-2">
+                      <p className="text-xs uppercase tracking-wide text-sage-deep mb-1">
+                        {t("sources")}
+                      </p>
+                      <ul className="space-y-1 text-xs">
+                        {f.references
+                          .filter((r) => r?.url && r?.title)
+                          .map((r, i) => (
+                            <li key={i}>
+                              <a
+                                href={r.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sage-deep hover:text-terracotta underline break-words"
+                              >
+                                {r.title}
+                              </a>
+                            </li>
+                          ))}
+                      </ul>
+                    </div>
+                  ) : null}
                 </details>
               ))}
             </div>

@@ -10,6 +10,7 @@ import { inArray } from "drizzle-orm";
 export const SETTINGS_DEFAULTS = {
   site_mode: "online", // "online" | "online+clinic"
   research_published: false,
+  show_fee_on_cta: false, // when true, hero Book CTA shows the first-consult fee
   cancel_cutoff_hours: 4, // no online cancel/reschedule within N hours of start
   brand_name: "ARYA",
   brand_tagline: "Healing starts here",
@@ -24,6 +25,11 @@ export const SETTINGS_DEFAULTS = {
   contact_phone: "+91 89997 58063",
   contact_whatsapp: "918999758063",
   contact_email: "",
+  google_reviews_url: "", // Google Business review link; badge hidden when empty
+  // Full-viewport photo behind the hero + About Me sections on the homepage
+  // (a fixed layer the other opaque sections scroll over). Admin-overridable;
+  // a warm clinic stock photo ships as the default.
+  home_bg_image: "/photos/clinic-bg.jpg",
   social_links: [],
   consultation_hours:
     "By appointment · Online (worldwide) and clinic (Nagpur & Pune)",

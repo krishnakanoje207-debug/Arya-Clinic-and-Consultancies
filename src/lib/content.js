@@ -2,6 +2,7 @@ import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   caseGallery,
+  conditions,
   faqs,
   profile,
   researchItems,
@@ -9,6 +10,7 @@ import {
   testimonials,
 } from "@/db/schema";
 import { getSettings } from "@/lib/settings";
+import { CONDITIONS_SEED } from "@/lib/conditions-data";
 
 /**
  * Pick the locale-appropriate value of a content field. DB content carries
@@ -50,6 +52,7 @@ const DEFAULT_PROFILE = {
   ],
   registrationNumber: "",
   registrationCouncil: "Maharashtra Council of Homoeopathy",
+  memberships: [],
   yearsExperience: 20,
   stats: [
     { label: "Years Experience", label_hi: "वर्षों का अनुभव", value: "20+" },
@@ -138,6 +141,7 @@ const DEFAULT_FAQS = [
   questionHi: null,
   answer,
   answerHi: null,
+  references: [],
   sortOrder: i,
   published: true,
 }));
@@ -153,6 +157,34 @@ export async function getPublishedFaqs() {
     null,
   );
   return rows && rows.length ? rows : DEFAULT_FAQS;
+}
+
+/** Code-level fallback so every condition page (and the homepage grid)
+ * renders before Neon is provisioned/seeded. Mirrors the seed list; DB rows
+ * take precedence once they exist. All seeded conditions are published. */
+const DEFAULT_CONDITIONS = CONDITIONS_SEED.map((c, i) => ({ id: i + 1, ...c }));
+
+export async function getPublishedConditions() {
+  const rows = await safe(
+    () =>
+      db
+        .select()
+        .from(conditions)
+        .where(eq(conditions.published, true))
+        .orderBy(asc(conditions.sortOrder), asc(conditions.id)),
+    null,
+  );
+  return rows && rows.length
+    ? rows
+    : DEFAULT_CONDITIONS.filter((c) => c.published);
+}
+
+/** Single published condition by slug, or null (page calls notFound()).
+ * Derives from getPublishedConditions so DB/fallback semantics match the
+ * homepage grid — no page 404s for a card the grid still shows. */
+export async function getConditionBySlug(slug) {
+  const all = await getPublishedConditions();
+  return all.find((c) => c.slug === slug) ?? null;
 }
 
 /** Research is public only when the admin toggle is on AND ≥1 visible item

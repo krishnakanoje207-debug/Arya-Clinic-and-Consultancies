@@ -6,10 +6,11 @@ import Reveal from "@/components/Reveal";
 
 const STAT_COLORS = ["text-terracotta", "text-teal", "text-rose"];
 
-/** Warm personal-brand hero: doctor photo with pulse ring, floating
- * lotus-colour blobs, gold swoosh under the name (echoing the ARYA logo),
- * staggered reveals and the two primary CTAs. */
-export default async function Hero({ profile, locale }) {
+/** Hero (v2.1) — a transparent "window" onto the page's fixed clinic
+ * background. Text sits over a soft left-side cream scrim for AA-legible
+ * contrast; the doctor portrait is kept small (the headline + CTAs lead), with
+ * the full portrait shown in the About section near the bottom. */
+export default async function Hero({ profile, locale, bookFee = null }) {
   const t = await getTranslations("hero");
   const name = profile?.name || "Dr. Seema Prajapati";
   const tagline = localized(profile, "tagline", locale);
@@ -20,19 +21,15 @@ export default async function Hero({ profile, locale }) {
   const statLabel = (s) => (locale === "hi" && s.label_hi) || s.label || "";
 
   return (
-    <section className="hero-blend">
-      {/* Decorative lotus-colour blobs — a zero-height absolute overlay so
-          they can never affect layout. */}
+    <section className="relative overflow-hidden scroll-mt-28">
+      {/* Cream scrim over the fixed background — heavier on the left where the
+          text sits, fading to reveal the photo on the right. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 overflow-hidden pointer-events-none"
-      >
-        <div className="blob w-72 h-72 bg-gold-soft -top-16 right-[12%]" />
-        <div className="blob w-80 h-80 bg-rose-soft bottom-[-6rem] left-[-4rem]" style={{ animationDelay: "-6s" }} />
-        <div className="blob w-64 h-64 bg-teal-soft top-1/3 left-[45%]" style={{ animationDelay: "-12s" }} />
-      </div>
+        className="absolute inset-0 bg-gradient-to-r from-cream via-cream/85 to-cream/20"
+      />
 
-      <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24 md:min-h-[72vh] grid md:grid-cols-2 gap-10 items-center">
+      <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24 md:min-h-[68vh] grid md:grid-cols-[1.35fr_0.65fr] gap-10 items-center">
         <div>
           <Reveal>
             {years ? (
@@ -50,9 +47,19 @@ export default async function Hero({ profile, locale }) {
               <p className="mt-4 text-lg text-ink-soft max-w-md">{tagline}</p>
             ) : null}
             {degrees.length ? (
-              <p className="mt-4 text-sm text-sage-deep font-semibold tracking-wide">
-                {degrees.map((d) => d.title).filter(Boolean).join(" · ")}
-              </p>
+              <ul className="mt-4 flex flex-wrap gap-2">
+                {degrees
+                  .map((d) => d.title)
+                  .filter(Boolean)
+                  .map((title, i) => (
+                    <li
+                      key={i}
+                      className="rounded-full bg-gold-soft text-sage-deep px-3 py-1 text-xs font-semibold tracking-wide"
+                    >
+                      {title}
+                    </li>
+                  ))}
+              </ul>
             ) : null}
           </Reveal>
 
@@ -60,6 +67,7 @@ export default async function Hero({ profile, locale }) {
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/book" className="btn-primary">
                 {t("ctaBook")}
+                {bookFee ? ` — ₹${bookFee}` : ""}
               </Link>
               <Link href="/#stories" className="btn-ghost">
                 {t("ctaStories")}
@@ -85,25 +93,24 @@ export default async function Hero({ profile, locale }) {
           ) : null}
         </div>
 
-        <Reveal delay={200} className="relative">
-          <div className="relative float-slow">
-            {/* Accents sit under the card via explicit stacking (z-0 vs z-10)
-                — negative z would drop them behind the section background. */}
+        <Reveal delay={200} className="relative flex justify-center md:justify-end">
+          <div className="relative w-40 sm:w-48 md:w-56 float-slow">
+            {/* Small lotus-colour accents under the portrait card. */}
             <div
               aria-hidden="true"
-              className="absolute -bottom-4 -left-4 h-16 w-28 rounded-2xl bg-gold/85 z-0 rotate-[-6deg]"
+              className="absolute -bottom-3 -left-3 h-10 w-16 rounded-xl bg-gold/85 z-0 rotate-[-6deg]"
             />
             <div
               aria-hidden="true"
-              className="absolute -top-4 -right-4 h-20 w-20 rounded-full bg-rose/60 z-0"
+              className="absolute -top-3 -right-3 h-12 w-12 rounded-full bg-rose/60 z-0"
             />
-            <div className="pulse-ring relative z-10 aspect-[4/5] rounded-[2rem] overflow-hidden bg-sage-soft shadow-xl ring-1 ring-[var(--border)]">
+            <div className="pulse-ring relative z-10 aspect-[4/5] rounded-[1.5rem] overflow-hidden bg-sage-soft shadow-xl ring-1 ring-[var(--border)]">
               {profile?.heroImage ? (
                 <SafeImage
                   src={profile.heroImage}
                   alt={name}
-                  width={640}
-                  height={800}
+                  width={280}
+                  height={350}
                   priority
                   className="h-full w-full object-cover"
                 />
@@ -112,11 +119,6 @@ export default async function Hero({ profile, locale }) {
                   Doctor photo
                 </div>
               )}
-              {/* Soft sage wash so the photo blends into the warm theme. */}
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 bg-gradient-to-t from-sage/25 via-transparent to-gold/10 mix-blend-multiply"
-              />
             </div>
           </div>
         </Reveal>

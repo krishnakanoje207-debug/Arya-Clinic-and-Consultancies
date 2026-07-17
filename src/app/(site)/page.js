@@ -10,7 +10,9 @@ import {
 import { getSettings } from "@/lib/settings";
 import Hero from "@/components/sections/Hero";
 import About from "@/components/sections/About";
+import HealingPath from "@/components/sections/HealingPath";
 import Conditions from "@/components/sections/Conditions";
+import SelfCheck from "@/components/sections/SelfCheck";
 import Services from "@/components/sections/Services";
 import WhyArya from "@/components/sections/WhyArya";
 import SuccessStories from "@/components/sections/SuccessStories";
@@ -38,16 +40,42 @@ export default async function HomePage() {
       getSettings(),
     ]);
 
+  // Optional consultation fee on the hero Book CTA (off until the client
+  // enables it in Settings — Drugs & Magic Remedies / ASCI-safe: a fee, not
+  // a claim). Uses the first non-follow-up service fee.
+  const firstConsult = services.find((s) => !s.isFollowUp) || services[0];
+  const showFee =
+    settings.show_fee_on_cta === true || settings.show_fee_on_cta === "true";
+  const bookFee = showFee && firstConsult?.feeInr ? firstConsult.feeInr : null;
+
+  // Full-viewport photo behind the transparent Hero + About "windows".
+  // A fixed layer (not background-attachment:fixed — janky on mobile); every
+  // other section carries an opaque bg band so the image shows only here.
+  const bgImage = settings.home_bg_image || "/photos/clinic-bg.jpg";
+
   return (
     <>
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 -z-10 pointer-events-none"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={bgImage} alt="" className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-cream/45" />
+      </div>
+
       <JsonLd profile={profile} settings={settings} />
       <FaqJsonLd faqs={faqs} locale={locale} />
-      <Hero profile={profile} locale={locale} />
-      <Reveal>
-        <About profile={profile} locale={locale} />
-      </Reveal>
+
+      <Hero profile={profile} locale={locale} bookFee={bookFee} />
       <Reveal>
         <Conditions />
+      </Reveal>
+      <Reveal>
+        <SuccessStories cases={cases} locale={locale} />
+      </Reveal>
+      <Reveal>
+        <HealingPath />
       </Reveal>
       <Reveal>
         <Services services={services} locale={locale} />
@@ -56,10 +84,10 @@ export default async function HomePage() {
         <WhyArya />
       </Reveal>
       <Reveal>
-        <SuccessStories cases={cases} locale={locale} />
+        <Testimonials testimonials={testimonials} locale={locale} />
       </Reveal>
       <Reveal>
-        <Testimonials testimonials={testimonials} locale={locale} />
+        <SelfCheck />
       </Reveal>
       {research.published ? (
         <Reveal>
@@ -68,6 +96,9 @@ export default async function HomePage() {
       ) : null}
       <Reveal>
         <Faq faqs={faqs} locale={locale} />
+      </Reveal>
+      <Reveal>
+        <About profile={profile} locale={locale} />
       </Reveal>
       <Reveal>
         <Contact settings={settings} />

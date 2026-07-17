@@ -13,6 +13,7 @@ export default function ProfileEditor({ profile }) {
   const statsText = (p.stats || [])
     .map((s) => [s.label, s.value].filter(Boolean).join(" | "))
     .join("\n");
+  const membershipsText = (p.memberships || []).join("\n");
 
   const input = "w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm";
 
@@ -49,6 +50,12 @@ export default function ProfileEditor({ profile }) {
       <label className="block sm:col-span-2">
         <span className="block text-sm font-semibold mb-1">Registration council</span>
         <input name="registrationCouncil" defaultValue={p.registrationCouncil || ""} className={input} />
+      </label>
+      <label className="block sm:col-span-2">
+        <span className="block text-sm font-semibold mb-1">
+          Memberships — one per line
+        </span>
+        <textarea name="memberships" defaultValue={membershipsText} rows={2} className={input} />
       </label>
       <ImageUpload name="heroImage" label="Hero image" defaultValue={p.heroImage} />
       <ImageUpload name="aboutImage" label="About image" defaultValue={p.aboutImage} />
