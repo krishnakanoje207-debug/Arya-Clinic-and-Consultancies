@@ -299,7 +299,9 @@ export async function dispatchMedicationReminder(kind, order, patient) {
           }
         : {
             subject: `Time for today's dose`,
-            body: `Hello ${values.patient_name}, it's time for today's dose of ${order.title}.`,
+            body:
+              `Hello ${values.patient_name}, it's time for today's dose of ${order.title}.` +
+              (values.dashboard_link ? ` Your dashboard: ${values.dashboard_link}` : ""),
           };
 
     const emailSubject = emailTpl

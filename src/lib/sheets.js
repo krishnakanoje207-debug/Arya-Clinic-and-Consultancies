@@ -157,15 +157,70 @@ export async function completedRowsForExport() {
   return out;
 }
 
-/** GET the header cell to learn whether the sheet is empty. */
-async function sheetIsEmpty(token, sheetId) {
+/** Make sure row 1 is the shared header row; insert it at the top if the sheet
+ * is empty OR its first row is data (e.g. rows appended before the header
+ * existed). Returns true when a header was written. */
+export async function ensureHeaderRow(token, sheetId) {
   const res = await fetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1:A1`,
     { headers: { authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`Sheets get: ${res.status} ${await res.text()}`);
   const body = await res.json();
-  return !body.values || body.values.length === 0;
+  const a1 = body.values?.[0]?.[0] || "";
+  if (a1 === COMPLETED_HEADERS[0]) return false;
+
+  if (a1) {
+    // Row 1 holds data — push everything down one row first.
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`,
+      { headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!metaRes.ok) {
+      throw new Error(`Sheets meta: ${metaRes.status} ${await metaRes.text()}`);
+    }
+    const meta = await metaRes.json();
+    const gid = meta.sheets?.[0]?.properties?.sheetId ?? 0;
+    const insRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}:batchUpdate`,
+      {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          requests: [
+            {
+              insertDimension: {
+                range: { sheetId: gid, dimension: "ROWS", startIndex: 0, endIndex: 1 },
+                inheritFromBefore: false,
+              },
+            },
+          ],
+        }),
+      },
+    );
+    if (!insRes.ok) {
+      throw new Error(`Sheets insert: ${insRes.status} ${await insRes.text()}`);
+    }
+  }
+
+  const putRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1?valueInputOption=RAW`,
+    {
+      method: "PUT",
+      headers: {
+        authorization: `Bearer ${token}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ values: [COMPLETED_HEADERS] }),
+    },
+  );
+  if (!putRes.ok) {
+    throw new Error(`Sheets header: ${putRes.status} ${await putRes.text()}`);
+  }
+  return true;
 }
 
 async function appendRows(token, sheetId, values) {
@@ -185,8 +240,8 @@ async function appendRows(token, sheetId, values) {
 }
 
 /**
- * Append one completed appointment as a row to GOOGLE_SHEET_ID (writing the
- * header first if the sheet is empty). BEST-EFFORT: no-ops when unconfigured
+ * Append one completed appointment as a row to GOOGLE_SHEET_ID (making sure
+ * the header row exists first). BEST-EFFORT: no-ops when unconfigured
  * and never throws — a Sheets outage must not break marking a consult complete.
  */
 export async function appendCompletedAppointmentRow(appointmentId) {
@@ -208,9 +263,8 @@ export async function appendCompletedAppointmentRow(appointmentId) {
 
     const cells = await assembleCompletedRow(row.a, row.serviceTitle || "Consultation");
     const token = await getAccessToken(SCOPE);
-    const empty = await sheetIsEmpty(token, sheetId);
-    const values = empty ? [COMPLETED_HEADERS, cells] : [cells];
-    await appendRows(token, sheetId, values);
+    await ensureHeaderRow(token, sheetId);
+    await appendRows(token, sheetId, [cells]);
     return { ok: true };
   } catch (err) {
     console.error("[sheets] append failed:", err?.message || err);
