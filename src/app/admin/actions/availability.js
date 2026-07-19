@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { and, eq, gt, gte, lt, or } from "drizzle-orm";
+import { and, eq, gt, gte, inArray, lt, or } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, filledSlots } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
@@ -44,14 +44,21 @@ export async function toggleFilledSlot(startAtIso, endAtIso) {
     return { ok: false, reason: "bad_time" };
   }
 
-  const [existing] = await db
+  // Unmark by OVERLAP, not exact range: a mark made from another service's
+  // slot grid (different duration) never matches exactly, and an exact-match
+  // toggle would insert a second mark on top instead of clearing it.
+  const existing = await db
     .select({ id: filledSlots.id })
     .from(filledSlots)
-    .where(and(eq(filledSlots.startAt, startAt), eq(filledSlots.endAt, endAt)))
-    .limit(1);
+    .where(and(lt(filledSlots.startAt, endAt), gt(filledSlots.endAt, startAt)));
 
-  if (existing) {
-    await db.delete(filledSlots).where(eq(filledSlots.id, existing.id));
+  if (existing.length) {
+    await db.delete(filledSlots).where(
+      inArray(
+        filledSlots.id,
+        existing.map((r) => r.id),
+      ),
+    );
     revalidatePath("/admin/availability");
     return { ok: true, filled: false };
   }

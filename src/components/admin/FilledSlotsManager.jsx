@@ -133,7 +133,8 @@ export default function FilledSlotsManager({ services }) {
               </div>
               <p className="mt-3 text-xs text-ink-soft">
                 Grey = open · <span className="text-terracotta-deep">Terracotta</span> = marked filled ·
-                Faded = genuinely booked or past. Click to toggle a mark.
+                Faded = genuinely booked or past. Click an open slot to mark it
+                as booked; click a marked slot again to unmark it.
               </p>
             </>
           ) : (
