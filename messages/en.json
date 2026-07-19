@@ -13,7 +13,7 @@
     "courierRef": "Courier reference",
     "statusCancelled": "Cancelled",
     "payCta": "Pay & order",
-    "payInstructions": "Pay via UPI for the duration you chose, then enter your transaction (UTR) reference below.",
+    "payInstructions": "Pay securely for the duration you chose by card, UPI, net banking or wallet. Your order is confirmed automatically once the payment succeeds.",
     "amountLabel": "Amount",
     "durations": {
       "15": "15 days",
@@ -216,13 +216,22 @@
     "continue": "Continue to payment",
     "holdNote": "Your slot is held for 15 minutes while you pay.",
     "payTitle": "Complete your payment",
-    "payInstructions": "Pay the consultation fee via UPI, then enter your transaction (UTR) reference below.",
+    "payInstructions": "Pay the consultation fee securely by card, UPI, net banking or wallet. Your booking is confirmed automatically once the payment succeeds.",
+    "payNow": "Pay securely now",
+    "paySecure": "Payments are processed securely by Razorpay. This site never sees your card or bank details.",
+    "payFailed": "The payment didn't go through. You can try again.",
+    "payInitFailed": "We couldn't start the payment just now. Please try again in a moment.",
     "payViaApp": "Pay via UPI app",
     "scanQr": "Or scan this QR with any UPI app",
     "copyUpi": "Copy UPI ID",
     "copied": "Copied",
     "utrLabel": "UPI transaction / UTR reference",
     "submitUtr": "Submit payment reference",
+    "confirmingTitle": "Payment received — confirming",
+    "confirmingBody": "Thank you. We're confirming your appointment now — this usually takes a few seconds.",
+    "confirmedTitle": "Appointment confirmed",
+    "confirmedBody": "Your payment is confirmed. You'll also get a confirmation by SMS and email.",
+    "confirmOnItsWay": "Your payment was received and your confirmation is on its way. You can safely close this page — track it anytime on your dashboard.",
     "pendingTitle": "Payment received — pending verification",
     "pendingBody": "Thank you. The doctor will verify your payment and confirm your appointment shortly. You'll get a confirmation by SMS and email.",
     "slotTaken": "Sorry, that slot was just booked by someone else. Please pick another time.",
@@ -312,10 +321,71 @@
     "required": "This field is required",
     "send": "Send message"
   },
+  "policy": {
+    "title": "Cancellation, Reschedule & Refund Policy",
+    "intro": "Every confirmation message includes a secure link to reschedule or cancel your appointment — no account needed.",
+    "rescheduleHeading": "Rescheduling",
+    "reschedule": "is possible up to {hours} hours before your slot, subject to availability. Within {hours} hours of a confirmed appointment, please contact the clinic directly.",
+    "cancelHeading": "Cancellations",
+    "cancel": "release your slot immediately so another patient can book it. Confirmed appointments can be cancelled online up to {hours} hours before the start time.",
+    "refundHeading": "Refunds",
+    "refundIntro": "All payments are processed securely through Razorpay. Where a refund is due, it is returned to the original payment method.",
+    "refundSource": "Approved refunds are credited back to the same card, UPI, bank account or wallet you paid from — they cannot be redirected elsewhere.",
+    "refundTime": "Once approved, refunds typically reach your account within 5–7 working days, depending on your bank.",
+    "refundAuto": "If your payment succeeds but the slot was taken in the meantime, the full amount is refunded automatically and you'll be invited to rebook — no payment is ever lost.",
+    "refundDiscretion": "Refunds for cancellations are considered by the clinic on a case-by-case basis.",
+    "footerNote": "This is a general policy; the doctor may accommodate genuine emergencies at her discretion."
+  },
+  "terms": {
+    "title": "Terms & Conditions",
+    "intro": "These Terms & Conditions govern your use of this website and the consultation services offered through it. By booking an appointment or otherwise using the site, you agree to these terms.",
+    "acceptance": {
+      "heading": "Who we are & acceptance of terms",
+      "body": "This site is operated by ARYA, a homoeopathy clinic and consultancy led by Dr. Seema Prajapati (BHMS). By accessing the site or booking a consultation, you confirm that you have read, understood and accepted these terms."
+    },
+    "services": {
+      "heading": "Services",
+      "body": "We offer online and in-clinic homoeopathic consultations, booked through this site, at our Nagpur and Pune locations. Consultations are advisory healthcare services and are not a substitute for emergency care. In a medical emergency, please contact your local emergency services or nearest hospital immediately."
+    },
+    "appointments": {
+      "heading": "Appointments & payments",
+      "body": "Appointment slots are confirmed only after a successful payment made through our payment partner, Razorpay. Fees are those displayed at the time of booking. Until payment is received, a slot is not reserved."
+    },
+    "cancellation": {
+      "heading": "Cancellation, reschedule & refunds",
+      "body": "Cancellations, rescheduling and refunds are governed by our <policyLink>Cancellation & Refund Policy</policyLink>. Please review it before booking."
+    },
+    "telemedicine": {
+      "heading": "Telemedicine consent",
+      "body": "Online consultations are conducted in line with applicable Indian telemedicine practice guidelines. By choosing an online consultation, you consent to receive care remotely and confirm that the information you provide is accurate and complete to the best of your knowledge."
+    },
+    "medicines": {
+      "heading": "Medicines",
+      "body": "Where medicines are dispensed or couriered, any stated delivery timelines are estimates and may vary. Please use all medicines only as directed."
+    },
+    "privacy": {
+      "heading": "Privacy",
+      "body": "Your personal data is handled in accordance with our <privacyLink>Privacy Policy</privacyLink>."
+    },
+    "ip": {
+      "heading": "Intellectual property",
+      "body": "All content on this site is owned by the clinic and may not be reproduced without permission. Health information provided on the site is general in nature and does not constitute a guarantee of any particular outcome."
+    },
+    "liability": {
+      "heading": "Limitation of liability & governing law",
+      "body": "To the extent permitted by law, the clinic is not liable for indirect or consequential loss arising from use of the site or services. These terms are governed by the laws of India, and any disputes are subject to the exclusive jurisdiction of the courts of Nagpur, Maharashtra."
+    },
+    "contact": {
+      "heading": "Contact",
+      "body": "For any questions about these terms, please reach us using the contact details provided on this site."
+    },
+    "lastUpdated": "Last updated: 19 July 2026"
+  },
   "footer": {
     "disclaimer": "Medical disclaimer",
     "privacy": "Privacy Policy",
-    "policy": "Cancellation & Reschedule Policy",
+    "policy": "Cancellation & Refund Policy",
+    "terms": "Terms & Conditions",
     "rights": "All rights reserved.",
     "conditionsHeading": "Conditions we treat",
     "quickLinks": "Quick links",

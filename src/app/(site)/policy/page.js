@@ -1,45 +1,46 @@
+import { getTranslations } from "next-intl/server";
 import { getSettings } from "@/lib/settings";
 
-export const metadata = { title: "Cancellation & Reschedule Policy" };
+export async function generateMetadata() {
+  const t = await getTranslations("policy");
+  return { title: t("title") };
+}
 
 export default async function PolicyPage() {
+  const t = await getTranslations("policy");
   const { cancel_cutoff_hours } = await getSettings(["cancel_cutoff_hours"]);
   const cutoff = Number(cancel_cutoff_hours) || 4;
 
   return (
     <article className="mx-auto max-w-3xl px-4 py-16">
       <h1 className="font-display text-3xl text-sage-deep font-semibold mb-6">
-        Cancellation &amp; Reschedule Policy
+        {t("title")}
       </h1>
       <div className="space-y-4 text-ink-soft leading-relaxed">
-        <p>
-          Every confirmation message includes a secure link to reschedule or
-          cancel your appointment — no account needed.
-        </p>
+        <p>{t("intro")}</p>
         <ul className="list-disc pl-5 space-y-2">
           <li>
-            <strong className="text-ink">Rescheduling</strong> is possible up
-            to {cutoff} hours before your slot, subject to availability. Within{" "}
-            {cutoff} hours of a confirmed appointment, please contact the clinic
-            directly.
+            <strong className="text-ink">{t("rescheduleHeading")}</strong>{" "}
+            {t("reschedule", { hours: cutoff })}
           </li>
           <li>
-            <strong className="text-ink">Cancellations</strong> release your
-            slot immediately so another patient can book it. Confirmed appointments
-            can be cancelled online up to {cutoff} hours before the start time.
-          </li>
-          <li>
-            <strong className="text-ink">Refunds</strong> for prepaid UPI
-            amounts are handled directly by the clinic on a case-by-case basis.
-            If your payment was received but your slot lapsed, submit your
-            transaction reference and the doctor will restore or reschedule it —
-            no payment is ever lost.
+            <strong className="text-ink">{t("cancelHeading")}</strong>{" "}
+            {t("cancel", { hours: cutoff })}
           </li>
         </ul>
-        <p className="text-sm">
-          This is a general policy; the doctor may accommodate genuine
-          emergencies at her discretion.
-        </p>
+
+        <h2 className="font-display text-xl text-sage-deep font-semibold pt-4">
+          {t("refundHeading")}
+        </h2>
+        <p>{t("refundIntro")}</p>
+        <ul className="list-disc pl-5 space-y-2">
+          <li>{t("refundSource")}</li>
+          <li>{t("refundTime")}</li>
+          <li>{t("refundAuto")}</li>
+          <li>{t("refundDiscretion")}</li>
+        </ul>
+
+        <p className="text-sm">{t("footerNote")}</p>
       </div>
     </article>
   );

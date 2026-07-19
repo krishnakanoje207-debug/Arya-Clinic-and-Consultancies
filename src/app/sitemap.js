@@ -5,7 +5,7 @@ import { quizSlugs } from "@/lib/quiz-data";
  * payment steps, /manage/* tokens and API routes are intentionally out. */
 export default async function sitemap() {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const paths = ["", "/book", "/testimonials", "/privacy", "/policy"];
+  const paths = ["", "/book", "/testimonials", "/privacy", "/policy", "/terms"];
   const staticEntries = paths.map((p) => ({
     url: `${base}${p}`,
     changeFrequency: p === "" ? "weekly" : "monthly",

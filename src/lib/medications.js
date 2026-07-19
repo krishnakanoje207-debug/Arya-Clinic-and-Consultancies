@@ -1,4 +1,4 @@
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { medicationOrders, patients } from "@/db/schema";
 import { nowUtc } from "@/lib/time";
@@ -23,18 +23,19 @@ export async function listOrdersForPatient(patientId) {
 }
 
 /**
- * Patient pays for a medication order (mirrors the consultation UTR flow).
- * Validates the payload, resolves the patient by their private dashboard
- * token, then the order — which must belong to that patient and still be
- * awaiting payment. The chosen duration must be one the doctor enabled; its
- * price becomes the order amount. Also persists the shipping address onto the
- * patient row so it prefills next time. Returns {ok:false, reason} for every
- * rejection so the action layer can surface a specific message.
+ * Begin a medication payment (Razorpay). Validates the payload, resolves the
+ * patient by their private dashboard token, then the order — which must belong
+ * to that patient and still be awaiting payment. The chosen duration must be one
+ * the doctor enabled; its price becomes the order amount (later converted to
+ * paise for the gateway, never trusting the client). Also persists the shipping
+ * address onto the patient row so it prefills next time. The action layer then
+ * opens the Razorpay order; the webhook marks it paid. Returns {ok:false,
+ * reason} for every rejection so the action layer can surface a specific message.
  */
-export async function submitMedicationPayment(dashboardToken, payload) {
+export async function beginMedicationPayment(dashboardToken, payload) {
   const parsed = medicationPaymentSchema.safeParse(payload);
   if (!parsed.success) return { ok: false, reason: "invalid" };
-  const { orderId, durationDays, address, utr } = parsed.data;
+  const { orderId, durationDays, address } = parsed.data;
 
   const [patient] = await db
     .select()
@@ -64,8 +65,6 @@ export async function submitMedicationPayment(dashboardToken, payload) {
       chosenDurationDays: durationDays,
       amountInr: Number(match.amountInr),
       address,
-      utr,
-      utrSubmittedAt: now,
       updatedAt: now,
     })
     .where(eq(medicationOrders.id, order.id))
@@ -76,7 +75,31 @@ export async function submitMedicationPayment(dashboardToken, payload) {
     .set({ address, updatedAt: now })
     .where(eq(patients.id, patient.id));
 
-  return { ok: true, order: updated };
+  return { ok: true, order: updated, patient };
+}
+
+/**
+ * Mark a medication order paid (Razorpay webhook + the admin's manual override
+ * share this). Only transitions from pending_payment, so a re-delivered webhook
+ * is a no-op ({ok:false, reason:"bad_state"}). Side effects (revalidate) belong
+ * to the caller.
+ */
+export async function markMedicationPaidRow(orderId, opts = {}) {
+  const { paymentId = null } = opts;
+  const now = nowUtc();
+  const set = { status: "paid", paidAt: now, updatedAt: now };
+  if (paymentId) set.razorpayPaymentId = paymentId;
+  const [row] = await db
+    .update(medicationOrders)
+    .set(set)
+    .where(
+      and(
+        eq(medicationOrders.id, Number(orderId)),
+        eq(medicationOrders.status, "pending_payment"),
+      ),
+    )
+    .returning();
+  return row ? { ok: true, order: row } : { ok: false, reason: "bad_state" };
 }
 
 /**

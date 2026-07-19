@@ -26,12 +26,6 @@ export const bookingInputSchema = z.object({
   patient: patientSchema,
 });
 
-/** UTR / UPI transaction refs are alphanumeric, typically 12 digits. */
-export const utrSchema = z
-  .string()
-  .trim()
-  .regex(/^[A-Za-z0-9\-]{6,40}$/, "invalid utr");
-
 /** Intake form: fixed whitelist of case-taking fields, bounded lengths —
  * prevents arbitrary/oversized JSON landing in the jsonb column. */
 export const intakeSchema = z
@@ -57,8 +51,9 @@ export const contactSchema = z.object({
 export const tokenSchema = z.string().uuid();
 
 /** Patient paying for a medication order: which order, the enabled duration
- * they picked (15/30/60 days), shipping address and their UPI transaction ref.
- * The server re-checks durationDays against the order's own options. */
+ * they picked (15/30/60 days) and the shipping address. The server re-checks
+ * durationDays against the order's own options and opens a Razorpay order for
+ * that option's price. */
 export const medicationPaymentSchema = z.object({
   orderId: z.coerce.number().int().positive(),
   durationDays: z.coerce
@@ -66,7 +61,6 @@ export const medicationPaymentSchema = z.object({
     .int()
     .refine((d) => d === 15 || d === 30 || d === 60, "invalid duration"),
   address: trimmed(500),
-  utr: utrSchema,
 });
 
 /** Patient reviewing their treatment from their dashboard. token identifies the

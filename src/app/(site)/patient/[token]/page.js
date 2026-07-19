@@ -8,8 +8,6 @@ import { formatIst, nowUtc } from "@/lib/time";
 import { tokenSchema } from "@/lib/validation";
 import { listOrdersForPatient } from "@/lib/medications";
 import { reviewExistsForPatient } from "@/lib/reviews";
-import { getSettings } from "@/lib/settings";
-import { upiQrDataUrl } from "@/lib/upi";
 import MedicationOrderCard from "@/components/MedicationOrderCard";
 import ReviewForm from "@/components/ReviewForm";
 
@@ -79,31 +77,14 @@ export default async function PatientDashboard({ params }) {
   const serviceTitle = (r) =>
     (locale === "hi" && r.serviceTitleHi) || r.serviceTitle || "";
 
-  // Medication orders + UPI payment context. QR data URLs are pre-rendered here
-  // (server) per option of every payable order so the client card never imports
-  // qrcode/db code. buildUpiString/upiQrDataUrl encode the same upi://pay string
-  // the consultation flow uses.
+  // Medication orders. Payment runs through Razorpay Checkout in the client
+  // card (opened against a server-created order); nothing payment-related is
+  // pre-rendered here.
   const medOrders = await listOrdersForPatient(patient.id);
-  const upi = await getSettings(["upi_id", "payee_name"]);
-  const payeeName = upi.payee_name || "Dr. Seema";
-  const medCards = await Promise.all(
-    medOrders.map(async (o) => {
-      const payable = o.status === "pending_payment" && !o.utr;
-      let qrByDays = null;
-      if (payable && upi.upi_id) {
-        qrByDays = {};
-        for (const opt of Array.isArray(o.options) ? o.options : []) {
-          qrByDays[String(opt.days)] = await upiQrDataUrl({
-            upiId: upi.upi_id,
-            payeeName,
-            amountInr: opt.amountInr,
-            note: `Meds ${o.id}`,
-          });
-        }
-      }
-      return { order: o, payable, qrByDays };
-    }),
-  );
+  const medCards = medOrders.map((o) => ({
+    order: o,
+    payable: o.status === "pending_payment",
+  }));
 
   const durationLabel = (days) => {
     const key = `medication.durations.${days}`;
@@ -227,7 +208,7 @@ export default async function PatientDashboard({ params }) {
         </h2>
         {medCards.length ? (
           <div className="space-y-4">
-            {medCards.map(({ order: o, payable, qrByDays }) => (
+            {medCards.map(({ order: o, payable }) => (
               <div key={o.id} className="card-warm p-5 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -245,26 +226,11 @@ export default async function PatientDashboard({ params }) {
                   </span>
                 </div>
 
-                {o.status === "pending_payment" && o.utr && (
-                  <p className="text-sm text-sage-deep">
-                    {t("medication.submitted")}
-                    {o.amountInr != null && (
-                      <span className="block text-ink-soft">
-                        {t("medication.amountLabel")}: ₹{o.amountInr} ·{" "}
-                        {t("booking.utrLabel")}: {o.utr}
-                      </span>
-                    )}
-                  </p>
-                )}
-
                 {payable && (
                   <MedicationOrderCard
                     dashboardToken={patient.dashboardToken}
                     order={{ id: o.id, title: o.title, options: o.options }}
                     prefillAddress={patient.address || ""}
-                    upiId={upi.upi_id || ""}
-                    payeeName={payeeName}
-                    qrByDays={qrByDays}
                   />
                 )}
 

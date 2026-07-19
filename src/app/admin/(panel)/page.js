@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   getDashboardStats,
-  getPendingVerifications,
   getQueueBuckets,
   getStorageUsage,
   getUpcomingAppointments,
@@ -30,10 +29,9 @@ function Stat({ label, value, href, accent }) {
 }
 
 export default async function AdminDashboard() {
-  const [stats, pending, upcoming, storage, queue, serviceRows] =
+  const [stats, upcoming, storage, queue, serviceRows] =
     await Promise.all([
       getDashboardStats().catch(() => ({})),
-      getPendingVerifications().catch(() => []),
       getUpcomingAppointments(8).catch(() => []),
       getStorageUsage().catch(() => null),
       getQueueBuckets().catch(() => ({ remaining: [], delayed: [], completed: [] })),
@@ -114,55 +112,18 @@ export default async function AdminDashboard() {
         </div>
       </section>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Stat
-          label="Payments to verify"
-          value={stats.pendingVerification ?? 0}
-          href="/admin/appointments"
-          accent="text-terracotta"
-        />
-        <Stat
-          label="Paid but hold expired"
-          value={stats.needsReview ?? 0}
-          href="/admin/appointments"
-          accent={stats.needsReview ? "text-terracotta" : "text-ink"}
-        />
+      <div className="grid gap-4 sm:grid-cols-2">
         <Stat
           label="Upcoming confirmed"
           value={stats.upcomingConfirmed ?? 0}
           href="/admin/appointments"
         />
+        <Stat
+          label="In queue now"
+          value={queue.remaining.length + queue.delayed.length}
+          href="/admin/queue"
+        />
       </div>
-
-      <section>
-        <h2 className="font-semibold text-ink mb-3">Needs attention</h2>
-        {pending.length ? (
-          <div className="card-warm divide-y divide-[var(--border)]">
-            {pending.map(({ appt, serviceTitle }) => (
-              <div key={appt.id} className="p-4 flex items-center justify-between text-sm">
-                <div>
-                  <p className="font-semibold">
-                    {appt.patientName}{" "}
-                    {appt.needsReview && (
-                      <span className="ml-2 text-xs bg-terracotta text-white px-2 py-0.5 rounded-full">
-                        paid, hold expired
-                      </span>
-                    )}
-                  </p>
-                  <p className="text-ink-soft">
-                    {serviceTitle} · {formatIst(appt.startAt)} · UTR: {appt.utr}
-                  </p>
-                </div>
-                <Link href="/admin/appointments" className="btn-ghost text-xs py-1 px-3">
-                  Review
-                </Link>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-ink-soft">Nothing pending. 🎉</p>
-        )}
-      </section>
 
       <section>
         <h2 className="font-semibold text-ink mb-3">Next appointments</h2>

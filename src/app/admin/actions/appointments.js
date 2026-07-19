@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
-import { expireStaleHolds } from "@/lib/booking";
+import { confirmPaidAppointment } from "@/lib/booking";
 import { completeAppointmentRow, shiftTodaysAppointments } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
 import { appendCompletedAppointmentRow } from "@/lib/sheets";
@@ -33,27 +33,12 @@ async function guard() {
  */
 export async function confirmAppointment(id, meetingLink) {
   await guard();
-  await expireStaleHolds(); // lapsed holds must not block a restore
-  let row;
-  try {
-    [row] = await db
-      .update(appointments)
-      .set({
-        status: "confirmed",
-        needsReview: false,
-        meetingLink: meetingLink || null,
-        updatedAt: new Date(),
-      })
-      .where(eq(appointments.id, Number(id)))
-      .returning();
-  } catch (err) {
-    if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };
-    throw err;
-  }
-  if (row) {
-    await dispatchNotification("confirmed", row, { includeIcs: true });
+  const res = await confirmPaidAppointment(id, { meetingLink: meetingLink || null });
+  if (!res.ok) return res; // slot_taken / bad_state / not_found
+  if (!res.already && res.appointment) {
+    await dispatchNotification("confirmed", res.appointment, { includeIcs: true });
     // Best-effort Google Calendar event (no-op when unconfigured, never throws).
-    await createAppointmentEvent(row);
+    await createAppointmentEvent(res.appointment);
   }
   revalidatePath("/admin/appointments");
   revalidatePath("/admin");

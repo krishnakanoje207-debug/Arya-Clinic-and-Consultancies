@@ -424,34 +424,60 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
   }
 }
 
-/** Submit a UTR reference. Accepted even after the hold expired — if late,
- * the row is flagged for admin review so no payment is silently lost
- * (plan §3.2 "patient paid but the hold expired"). */
-export async function submitUtr(manageToken, utr) {
-  const [appt] = await db
+/**
+ * Confirm a paid appointment. Shared by the Razorpay webhook (payment.captured)
+ * and the admin's discretionary "Confirm" override so both go through exactly
+ * one code path. Stale holds are expired first so a lapsed hold never blocks a
+ * restore; the row is then flipped to confirmed INSIDE the EXCLUSION predicate.
+ * If the slot was retaken while the hold lapsed, Postgres raises 23P01 →
+ * {ok:false, reason:"slot_taken"} (the webhook then auto-refunds). Already
+ * confirmed → {ok:true, already:true}. Side effects (notifications, calendar)
+ * belong to the caller so this stays reusable and directly testable.
+ */
+export async function confirmPaidAppointment(id, opts = {}) {
+  const { paymentId = null, meetingLink } = opts;
+  await expireStaleHolds();
+  const [current] = await db
     .select()
     .from(appointments)
-    .where(eq(appointments.manageToken, manageToken));
-  if (!appt) return { ok: false, reason: "not_found" };
-  if (appt.status === "confirmed") return { ok: true, alreadyConfirmed: true };
+    .where(eq(appointments.id, Number(id)));
+  if (!current) return { ok: false, reason: "not_found" };
+  if (current.status === "confirmed") {
+    return { ok: true, already: true, appointment: current };
+  }
+  if (current.status === "cancelled" || current.status === "completed") {
+    return { ok: false, reason: "bad_state", appointment: current };
+  }
+  const set = { status: "confirmed", needsReview: false, updatedAt: nowUtc() };
+  if (paymentId) set.razorpayPaymentId = paymentId;
+  if (meetingLink !== undefined) set.meetingLink = meetingLink || null;
+  try {
+    const [row] = await db
+      .update(appointments)
+      .set(set)
+      .where(eq(appointments.id, Number(id)))
+      .returning();
+    return { ok: true, appointment: row };
+  } catch (err) {
+    // 23P01 = exclusion_violation (the slot was retaken while the hold lapsed).
+    // Drizzle can wrap the driver error, so check the cause and message too.
+    if (isExclusionViolation(err)) {
+      return { ok: false, reason: "slot_taken", appointment: current };
+    }
+    throw err;
+  }
+}
 
-  const now = nowUtc();
-  const lateOrExpired =
-    appt.status === "expired" ||
-    (appt.holdExpiresAt && new Date(appt.holdExpiresAt).getTime() < now.getTime());
-
-  const [updated] = await db
-    .update(appointments)
-    .set({
-      utr,
-      utrSubmittedAt: now,
-      needsReview: lateOrExpired,
-      updatedAt: now,
-    })
-    .where(eq(appointments.id, appt.id))
-    .returning();
-
-  return { ok: true, needsReview: lateOrExpired, appointment: updated };
+/** True when a thrown DB error is a Postgres exclusion_violation (23P01),
+ * whether the code sits on the error, its cause, or only in the message. */
+function isExclusionViolation(err) {
+  return (
+    err?.code === "23P01" ||
+    err?.cause?.code === "23P01" ||
+    /23P01|exclusion|no_overlap|conflicting key/i.test(
+      String(err?.message || "") + String(err?.cause?.message || ""),
+    )
+  );
 }
 
 /** Build a upi://pay deep link and the canonical payment params for a

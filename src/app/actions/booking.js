@@ -3,19 +3,10 @@
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments } from "@/db/schema";
-import {
-  createBooking,
-  getServiceCalendar,
-  submitUtr,
-} from "@/lib/booking";
-import { upiQrDataUrl } from "@/lib/upi";
+import { createBooking, getServiceCalendar } from "@/lib/booking";
+import { createRazorpayOrder, razorpayKeyId } from "@/lib/razorpay";
 import { getSettings } from "@/lib/settings";
-import {
-  bookingInputSchema,
-  intakeSchema,
-  tokenSchema,
-  utrSchema,
-} from "@/lib/validation";
+import { bookingInputSchema, intakeSchema, tokenSchema } from "@/lib/validation";
 import { dispatchNotification } from "@/lib/notify";
 
 /** Fetch the live slot calendar for a service+mode (called by the client
@@ -40,8 +31,10 @@ export async function getCalendarAction(serviceId, mode) {
   };
 }
 
-/** Hold a slot: creates the pending_payment appointment and returns the
- * UPI payment details (QR + deep link) for the payment window. */
+/** Hold a slot: creates the pending_payment appointment, opens a server-side
+ * Razorpay order (amount from the DB, in paise) and returns the public key id +
+ * order id for Razorpay Checkout. The webhook confirms the booking once the
+ * payment is captured. */
 export async function createBookingAction(input) {
   const parsed = bookingInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -62,27 +55,30 @@ export async function createBookingAction(input) {
   if (!result.ok) return result;
 
   const appt = result.appointment;
-  const s = await getSettings(["upi_id", "upi_number", "payee_name"]);
 
-  let qr = null;
-  let deepLink = null;
-  if (s.upi_id) {
-    const note = `Consult ${appt.id}`;
-    qr = await upiQrDataUrl({
-      upiId: s.upi_id,
-      payeeName: s.payee_name || "Dr. Seema",
+  let order;
+  try {
+    order = await createRazorpayOrder({
       amountInr: appt.amountInr,
-      note,
+      receipt: `appt_${appt.id}`,
+      notes: { kind: "appointment", appointmentId: String(appt.id) },
     });
-    const params = new URLSearchParams({
-      pa: s.upi_id,
-      pn: s.payee_name || "Dr. Seema",
-      am: String(appt.amountInr),
-      cu: "INR",
-      tn: note,
-    });
-    deepLink = `upi://pay?${params.toString()}`;
+  } catch (err) {
+    console.error("[razorpay] appointment order create failed:", err?.message || err);
+    // Free the held slot at once so a failed payment init doesn't waste it.
+    await db
+      .update(appointments)
+      .set({ status: "expired", updatedAt: new Date() })
+      .where(eq(appointments.id, appt.id));
+    return { ok: false, reason: "payment_init_failed" };
   }
+
+  await db
+    .update(appointments)
+    .set({ razorpayOrderId: order.id, updatedAt: new Date() })
+    .where(eq(appointments.id, appt.id));
+
+  const s = await getSettings(["payee_name"]);
 
   await dispatchNotification("booking_received", appt, { notifyDoctor: true });
 
@@ -93,32 +89,32 @@ export async function createBookingAction(input) {
       manageToken: appt.manageToken,
       dashboardToken: result.dashboardToken,
       amountInr: appt.amountInr,
-      holdExpiresAt: appt.holdExpiresAt,
     },
-    upi: {
-      upiId: s.upi_id || "",
-      upiNumber: s.upi_number || "",
+    payment: {
+      keyId: razorpayKeyId(),
+      orderId: order.id,
+      amountInr: appt.amountInr,
       payeeName: s.payee_name || "Dr. Seema",
-      qrDataUrl: qr,
-      deepLink,
+      prefill: {
+        name: appt.patientName,
+        contact: appt.patientPhone,
+        email: appt.patientEmail || "",
+      },
     },
   };
 }
 
-/** Record the patient's UPI transaction reference. */
-export async function submitUtrAction(manageToken, utr) {
+/** Poll the confirmation status of a booking after Checkout closes (the webhook
+ * confirms asynchronously). Manage-token scoped so only the booker can read it. */
+export async function getBookingStatusAction(manageToken) {
   const token = tokenSchema.safeParse(manageToken);
-  const cleanUtr = utrSchema.safeParse(String(utr || "").trim());
-  if (!token.success || !cleanUtr.success) {
-    return { ok: false, reason: "missing_utr" };
-  }
-  const res = await submitUtr(token.data, cleanUtr.data);
-  if (res.ok && !res.alreadyConfirmed && res.appointment) {
-    await dispatchNotification("payment_received", res.appointment, {
-      notifyDoctor: true,
-    });
-  }
-  return { ok: res.ok, needsReview: res.needsReview, alreadyConfirmed: res.alreadyConfirmed };
+  if (!token.success) return { ok: false };
+  const [appt] = await db
+    .select({ status: appointments.status })
+    .from(appointments)
+    .where(eq(appointments.manageToken, token.data));
+  if (!appt) return { ok: false };
+  return { ok: true, status: appt.status, confirmed: appt.status === "confirmed" };
 }
 
 /** Attach optional pre-consultation intake answers to the appointment.

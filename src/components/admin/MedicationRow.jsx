@@ -18,7 +18,7 @@ const STATUS_STYLE = {
  * mark paid (after verifying the shown UTR against the doctor's bank SMS) or
  * cancel; paid → mark shipped (optional courier ref) or cancel; shipped is
  * terminal. Surfaces a failed action with an alert, like AppointmentRow. */
-export default function MedicationRow({ order, patientName, patientPhone, createdLabel, utrSubmittedLabel }) {
+export default function MedicationRow({ order, patientName, patientPhone, createdLabel }) {
   const [pending, startTransition] = useTransition();
   const [courierRef, setCourierRef] = useState("");
 
@@ -49,10 +49,14 @@ export default function MedicationRow({ order, patientName, patientPhone, create
         <span className={`text-xs px-2 py-1 rounded-full ${STATUS_STYLE[order.status]}`}>
           {order.status.replace("_", " ")}
         </span>
-        {order.utr && (
-          <div className="text-[11px] text-ink-soft mt-1">
-            UTR: {order.utr}
-            {utrSubmittedLabel ? ` · ${utrSubmittedLabel}` : ""}
+        {order.razorpayPaymentId && (
+          <div className="text-[11px] text-ink-soft mt-1 break-all">
+            Payment: {order.razorpayPaymentId}
+          </div>
+        )}
+        {order.razorpayRefundId && (
+          <div className="text-[11px] text-terracotta-deep mt-1 break-all">
+            Refunded: {order.razorpayRefundId}
           </div>
         )}
       </td>

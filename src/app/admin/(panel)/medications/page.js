@@ -36,8 +36,8 @@ export default async function AdminMedications() {
       <p className="text-sm text-ink-soft max-w-2xl">
         Orders for medicines you parcel yourself after a consultation. Create an
         order, pricing each duration you allow; the patient picks one, enters a
-        shipping address and pays by UPI. Verify their UTR against your bank SMS
-        before marking it paid, then mark it shipped once dispatched.
+        shipping address and pays securely through Razorpay. Paid orders are
+        confirmed automatically — just mark them shipped once dispatched.
       </p>
 
       {patientList.length ? (
@@ -70,9 +70,6 @@ export default async function AdminMedications() {
                   patientName={patientName}
                   patientPhone={patientPhone}
                   createdLabel={formatIst(order.createdAt)}
-                  utrSubmittedLabel={
-                    order.utrSubmittedAt ? formatIst(order.utrSubmittedAt) : null
-                  }
                 />
               ))}
             </tbody>

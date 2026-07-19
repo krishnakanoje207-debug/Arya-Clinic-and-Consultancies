@@ -1,15 +1,15 @@
 "use client";
 
-import Image from "next/image";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   createBookingAction,
+  getBookingStatusAction,
   getCalendarAction,
   submitIntakeAction,
-  submitUtrAction,
 } from "@/app/actions/booking";
 import { rescheduleByToken } from "@/app/actions/manage";
+import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
 
 function formatDayLabel(dateStr) {
   const d = new Date(`${dateStr}T00:00:00`);
@@ -48,10 +48,8 @@ export default function BookingFlow({
   });
   const detailsRef = useRef(null);
   const [booking, setBooking] = useState(null);
-  const [upi, setUpi] = useState(null);
-  const [utr, setUtr] = useState("");
+  const [payment, setPayment] = useState(null);
   const [error, setError] = useState(null);
-  const [copied, setCopied] = useState(false);
 
   const service = services.find((s) => s.id === Number(serviceId)) || null;
   const needsModeChoice = !reschedule && clinicMode && service?.mode === "both";
@@ -128,34 +126,16 @@ export default function BookingFlow({
             ? t("booking.slotTaken")
             : res.reason === "too_many_holds"
               ? t("booking.tooManyHolds")
-              : t("common.required");
+              : res.reason === "payment_init_failed"
+                ? t("booking.payInitFailed")
+                : t("common.required");
         setError(msg);
         if (res.reason === "slot_taken") setSlot(null);
         return;
       }
       setBooking(res.booking);
-      setUpi(res.upi);
+      setPayment(res.payment);
       setStep("payment");
-    });
-  }
-
-  function submitPayment(e) {
-    e.preventDefault();
-    setError(null);
-    startTransition(async () => {
-      const res = await submitUtrAction(booking.manageToken, utr);
-      if (!res.ok) {
-        setError(t("booking.utrLabel"));
-        return;
-      }
-      setStep("pending");
-    });
-  }
-
-  function copyUpi() {
-    navigator.clipboard?.writeText(upi.upiId).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
     });
   }
 
@@ -392,15 +372,8 @@ export default function BookingFlow({
       {step === "payment" && (
         <PaymentWindow
           t={t}
-          upi={upi}
-          amount={booking.amountInr}
-          utr={utr}
-          setUtr={setUtr}
-          onSubmit={submitPayment}
-          pending={pending}
-          error={error}
-          copied={copied}
-          copyUpi={copyUpi}
+          payment={payment}
+          onPaid={() => setStep("pending")}
         />
       )}
 
@@ -415,9 +388,35 @@ export default function BookingFlow({
   );
 }
 
-function PaymentWindow({ t, upi, amount, utr, setUtr, onSubmit, pending, error, copied, copyUpi }) {
-  const isMobile =
-    typeof navigator !== "undefined" && /Android|iPhone/i.test(navigator.userAgent);
+function PaymentWindow({ t, payment, onPaid }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  function pay() {
+    setError(null);
+    setBusy(true);
+    openRazorpayCheckout({
+      keyId: payment.keyId,
+      orderId: payment.orderId,
+      amountInr: payment.amountInr,
+      name: payment.payeeName,
+      description: t("booking.payTitle"),
+      prefill: payment.prefill,
+      onSuccess: () => {
+        setBusy(false);
+        onPaid();
+      },
+      onDismiss: () => setBusy(false),
+      onFailed: () => {
+        setBusy(false);
+        setError(t("booking.payFailed"));
+      },
+    }).catch(() => {
+      setBusy(false);
+      setError(t("booking.payInitFailed"));
+    });
+  }
+
   return (
     <div className="card-warm p-6 space-y-5">
       <div>
@@ -427,52 +426,20 @@ function PaymentWindow({ t, upi, amount, utr, setUtr, onSubmit, pending, error, 
         <p className="text-sm text-ink-soft mt-1">{t("booking.payInstructions")}</p>
       </div>
 
-      <p className="text-lg font-semibold text-terracotta">₹{amount}</p>
+      <p className="text-lg font-semibold text-terracotta">₹{payment.amountInr}</p>
 
-      {upi.deepLink && isMobile && (
-        <a href={upi.deepLink} className="btn-primary inline-block">
-          {t("booking.payViaApp")}
-        </a>
-      )}
+      {error && <p className="text-sm text-terracotta-deep">{error}</p>}
 
-      {upi.qrDataUrl && (
-        <div>
-          <p className="text-sm text-ink-soft mb-2">{t("booking.scanQr")}</p>
-          <Image
-            src={upi.qrDataUrl}
-            alt="UPI QR"
-            width={200}
-            height={200}
-            unoptimized
-            className="rounded-lg border border-[var(--border)]"
-          />
-        </div>
-      )}
+      <button
+        type="button"
+        onClick={pay}
+        disabled={busy}
+        className="btn-primary w-full"
+      >
+        {busy ? t("common.loading") : t("booking.payNow")}
+      </button>
 
-      {upi.upiId && (
-        <div className="flex items-center gap-2 text-sm">
-          <code className="bg-cream-deep px-2 py-1 rounded">{upi.upiId}</code>
-          <button type="button" onClick={copyUpi} className="btn-ghost text-xs py-1 px-3">
-            {copied ? t("booking.copied") : t("booking.copyUpi")}
-          </button>
-        </div>
-      )}
-
-      <form onSubmit={onSubmit} className="space-y-3 border-t border-[var(--border)] pt-4">
-        <label className="block text-sm font-semibold text-ink">
-          {t("booking.utrLabel")}
-        </label>
-        <input
-          required
-          value={utr}
-          onChange={(e) => setUtr(e.target.value)}
-          className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
-        />
-        {error && <p className="text-sm text-terracotta-deep">{error}</p>}
-        <button type="submit" disabled={pending} className="btn-primary w-full">
-          {pending ? t("common.loading") : t("booking.submitUtr")}
-        </button>
-      </form>
+      <p className="text-xs text-ink-soft">{t("booking.paySecure")}</p>
     </div>
   );
 }
@@ -482,6 +449,30 @@ function PendingWithIntake({ t, manageToken, dashboardToken }) {
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
   const [answers, setAnswers] = useState({});
+  // Poll the webhook-driven confirmation so the patient sees it flip to
+  // "confirmed" without refreshing; after ~30s show a reassuring fallback.
+  const [confirmState, setConfirmState] = useState("confirming");
+
+  useEffect(() => {
+    let tries = 0;
+    let stopped = false;
+    const iv = setInterval(async () => {
+      tries += 1;
+      const res = await getBookingStatusAction(manageToken);
+      if (stopped) return;
+      if (res.ok && res.confirmed) {
+        setConfirmState("confirmed");
+        clearInterval(iv);
+      } else if (tries >= 15) {
+        setConfirmState("timeout");
+        clearInterval(iv);
+      }
+    }, 2000);
+    return () => {
+      stopped = true;
+      clearInterval(iv);
+    };
+  }, [manageToken]);
 
   const fields = [
     "chiefComplaint",
@@ -502,13 +493,27 @@ function PendingWithIntake({ t, manageToken, dashboardToken }) {
     });
   }
 
+  const heading =
+    confirmState === "confirmed"
+      ? t("booking.confirmedTitle")
+      : confirmState === "timeout"
+        ? t("booking.confirmingTitle")
+        : t("booking.confirmingTitle");
+  const bodyText =
+    confirmState === "confirmed"
+      ? t("booking.confirmedBody")
+      : confirmState === "timeout"
+        ? t("booking.confirmOnItsWay")
+        : t("booking.confirmingBody");
+
   return (
     <div className="card-warm p-6 space-y-5">
       <div>
         <h2 className="font-display text-2xl text-sage-deep font-semibold">
-          {t("booking.pendingTitle")}
+          {confirmState === "confirmed" ? "✓ " : ""}
+          {heading}
         </h2>
-        <p className="text-sm text-ink-soft mt-1">{t("booking.pendingBody")}</p>
+        <p className="text-sm text-ink-soft mt-1">{bodyText}</p>
       </div>
 
       {dashboardToken && (

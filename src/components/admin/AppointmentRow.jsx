@@ -63,8 +63,20 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
           <span className={`text-xs px-2 py-1 rounded-full ${STATUS_STYLE[appt.status]}`}>
             {appt.status.replace("_", " ")}
           </span>
-          {appt.utr && (
-            <div className="text-[11px] text-ink-soft mt-1">UTR: {appt.utr}</div>
+          {appt.razorpayPaymentId && (
+            <div className="text-[11px] text-ink-soft mt-1 break-all">
+              Payment: {appt.razorpayPaymentId}
+            </div>
+          )}
+          {appt.razorpayRefundId && (
+            <div className="text-[11px] text-terracotta-deep mt-1 break-all">
+              Refunded: {appt.razorpayRefundId}
+            </div>
+          )}
+          {appt.razorpayOrderId && (
+            <div className="text-[11px] text-ink-soft/70 mt-1 break-all">
+              Order: {appt.razorpayOrderId}
+            </div>
           )}
         </td>
         <td className="p-3 text-right space-x-1 whitespace-nowrap">

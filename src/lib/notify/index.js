@@ -98,7 +98,7 @@ export async function dispatchNotification(event, appt, opts = {}) {
               `${event.toUpperCase()}\n` +
               `Patient: ${appt.patientName} (${appt.patientPhone})\n` +
               `Service: ${serviceTitle}\nWhen: ${values.date} ${values.time}\n` +
-              `Amount: ₹${values.amount}\nUTR: ${appt.utr || "—"}\n` +
+              `Amount: ₹${values.amount}\nPayment: ${appt.razorpayPaymentId || "—"}\n` +
               `Admin: ${process.env.NEXT_PUBLIC_SITE_URL || ""}/admin/appointments`,
           })
         : Promise.resolve({ skipped: true }),

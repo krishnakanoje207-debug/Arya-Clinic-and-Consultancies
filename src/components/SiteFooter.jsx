@@ -121,6 +121,11 @@ export default async function SiteFooter() {
                 {t("footer.policy")}
               </Link>
             </li>
+            <li>
+              <Link href="/terms" className="hover:text-sage-deep">
+                {t("footer.terms")}
+              </Link>
+            </li>
           </ul>
         </div>
 

@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 const EVENTS = [
   "booking_received",
   "payment_received",
+  "payment_refunded",
   "confirmed",
   "reminder",
   "rescheduled",
@@ -25,7 +26,7 @@ const CHANNELS = [
 
 const PLACEHOLDERS = [
   "{patient_name}", "{date}", "{time}", "{service}", "{amount}",
-  "{meet_link}", "{manage_link}", "{dashboard_link}", "{upi_id}", "{doctor_name}", "{whatsapp_link}",
+  "{meet_link}", "{manage_link}", "{dashboard_link}", "{doctor_name}", "{whatsapp_link}",
 ];
 
 // Medication reminder events (medication dose / medication refill) draw from a

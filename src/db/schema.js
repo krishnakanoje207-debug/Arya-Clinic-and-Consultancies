@@ -167,9 +167,12 @@ export const appointments = pgTable("appointments", {
   endAt: timestamp("end_at", { withTimezone: true }).notNull(), // UTC
   status: appointmentStatus("status").notNull().default("pending_payment"),
   amountInr: integer("amount_inr").notNull(),
-  utr: text("utr"), // UPI transaction reference entered by patient
+  utr: text("utr"), // legacy UPI transaction reference (kept for old rows; no longer written)
   utrSubmittedAt: timestamp("utr_submitted_at", { withTimezone: true }),
-  needsReview: boolean("needs_review").notNull().default(false), // paid-but-hold-expired flow
+  razorpayOrderId: text("razorpay_order_id"), // gateway order id — webhook correlation key
+  razorpayPaymentId: text("razorpay_payment_id"), // captured payment id (set on confirm)
+  razorpayRefundId: text("razorpay_refund_id"), // set when a lost-slot payment is auto-refunded
+  needsReview: boolean("needs_review").notNull().default(false), // legacy paid-but-hold-expired flow
   holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
   intakeAnswers: jsonb("intake_answers"), // pre-consultation case-taking form
   meetingLink: text("meeting_link"), // Google Meet / WhatsApp video
@@ -340,7 +343,7 @@ export const quizLeads = pgTable("quiz_leads", {
  * {meet_link} {manage_link} {upi_id} {doctor_name} */
 export const messageTemplates = pgTable("message_templates", {
   id: serial("id").primaryKey(),
-  event: text("event").notNull(), // booking_received, payment_received, confirmed, reminder, rescheduled, cancelled, follow_up, medication_dose, medication_refill
+  event: text("event").notNull(), // booking_received, payment_received, payment_refunded, confirmed, reminder, rescheduled, cancelled, follow_up, medication_dose, medication_refill
   channel: text("channel").notNull(), // email | sms
   subject: text("subject"), // email only
   body: text("body").notNull(),
@@ -366,8 +369,11 @@ export const medicationOrders = pgTable("medication_orders", {
   amountInr: integer("amount_inr"), // set when patient picks (from the matching option)
   status: text("status").notNull().default("pending_payment"), // pending_payment | paid | shipped | cancelled
   address: text("address"), // shipping address for this order
-  utr: text("utr"), // UPI transaction reference entered by patient
+  utr: text("utr"), // legacy UPI transaction reference (kept for old rows; no longer written)
   utrSubmittedAt: timestamp("utr_submitted_at", { withTimezone: true }),
+  razorpayOrderId: text("razorpay_order_id"), // gateway order id — webhook correlation key
+  razorpayPaymentId: text("razorpay_payment_id"), // captured payment id (set on paid)
+  razorpayRefundId: text("razorpay_refund_id"), // set if a payment is auto-refunded
   paidAt: timestamp("paid_at", { withTimezone: true }),
   shippedAt: timestamp("shipped_at", { withTimezone: true }),
   courierRef: text("courier_ref"),
