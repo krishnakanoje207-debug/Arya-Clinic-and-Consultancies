@@ -248,6 +248,7 @@
     "manage": "Manage / reschedule",
     "yourNote": "You wrote:",
     "bookFollowUp": "Book a follow-up consultation",
+    "followUpHint": "Due for your next visit? Your details are filled in automatically.",
     "privateNote": "This is your personal link. Please keep it private and do not share it.",
     "status": {
       "pending_payment": "Awaiting confirmation",

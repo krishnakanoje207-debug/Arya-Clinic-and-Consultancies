@@ -178,6 +178,17 @@ export default async function PatientDashboard({ params }) {
             {t("patientDashboard.noUpcoming")}
           </p>
         )}
+        <div className="mt-4 card-warm p-5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm text-ink-soft">
+            {t("patientDashboard.followUpHint")}
+          </p>
+          <Link
+            href={`/book?p=${patient.dashboardToken}`}
+            className="btn-primary inline-block"
+          >
+            {t("patientDashboard.bookFollowUp")}
+          </Link>
+        </div>
       </section>
 
       <section className="mb-10">
@@ -291,13 +302,6 @@ export default async function PatientDashboard({ params }) {
           alreadySubmitted={alreadyReviewed}
         />
       </section>
-
-      <Link
-        href={`/book?p=${patient.dashboardToken}`}
-        className="btn-primary inline-block"
-      >
-        {t("patientDashboard.bookFollowUp")}
-      </Link>
 
       <p className="mt-8 text-xs text-ink-soft">
         {t("patientDashboard.privateNote")}

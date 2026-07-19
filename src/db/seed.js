@@ -240,12 +240,12 @@ async function seedTemplates() {
   if (await hasRows(messageTemplates)) return;
   const T = [
     ["booking_received", "Slot held — complete your payment", "Hi {patient_name}, your {service} slot on {date} at {time} is held for 15 minutes. Please pay ₹{amount} via UPI ({upi_id}) and enter your transaction reference to confirm."],
-    ["payment_received", "Payment received — pending verification", "Thanks {patient_name}. We've received your payment reference for {date} {time}. The doctor will verify and confirm shortly."],
-    ["confirmed", "Appointment confirmed", "Your appointment with {doctor_name} is confirmed for {date} at {time}. {meet_link} Manage your booking: {manage_link}"],
-    ["reminder", "Reminder: your appointment tomorrow", "Reminder: {patient_name}, your consultation with {doctor_name} is on {date} at {time}. {meet_link}"],
-    ["rescheduled", "Your appointment was rescheduled", "Hi {patient_name}, your appointment is now on {date} at {time}. Manage: {manage_link}"],
-    ["cancelled", "Your appointment was cancelled", "Hi {patient_name}, your appointment on {date} at {time} has been cancelled. Reply to rebook."],
-    ["follow_up", "Time for a follow-up?", "Hi {patient_name}, hope you're feeling better. Book a follow-up with {doctor_name} whenever you're ready."],
+    ["payment_received", "Payment received — pending verification", "Thanks {patient_name}. We've received your payment reference for {date} {time}. The doctor will verify and confirm shortly. Track the status anytime on your dashboard: {dashboard_link}"],
+    ["confirmed", "Appointment confirmed", "Your appointment with {doctor_name} is confirmed for {date} at {time}. {meet_link} Manage your booking: {manage_link} Your personal dashboard (appointments, medicines, follow-ups — save this link): {dashboard_link}"],
+    ["reminder", "Reminder: your appointment tomorrow", "Reminder: {patient_name}, your consultation with {doctor_name} is on {date} at {time}. {meet_link} Your dashboard: {dashboard_link}"],
+    ["rescheduled", "Your appointment was rescheduled", "Hi {patient_name}, your appointment is now on {date} at {time}. Manage: {manage_link} Your dashboard: {dashboard_link}"],
+    ["cancelled", "Your appointment was cancelled", "Hi {patient_name}, your appointment on {date} at {time} has been cancelled. Book again anytime from your dashboard: {dashboard_link}"],
+    ["follow_up", "Time for a follow-up?", "Hi {patient_name}, hope you're feeling better. Book a follow-up with {doctor_name} anytime from your dashboard: {dashboard_link}"],
   ];
   for (const [event, subject, body] of T) {
     await db
