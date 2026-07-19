@@ -98,7 +98,13 @@ async function main() {
   const createRes = await fetch(`${API}/webhooks`, {
     method: "POST",
     headers: { authorization: authHeader(), "content-type": "application/json" },
-    body: JSON.stringify({ url, secret: webhookSecret, events: EVENTS }),
+    // Razorpay expects events as {name: true}, not an array (array indices
+    // get read as event names → "Invalid event name: 1").
+    body: JSON.stringify({
+      url,
+      secret: webhookSecret,
+      events: Object.fromEntries(EVENTS.map((e) => [e, true])),
+    }),
   });
   if (!createRes.ok) {
     console.error(`❌ Webhook create failed: ${createRes.status} ${await createRes.text()}`);
