@@ -2,11 +2,17 @@ import Link from "next/link";
 import {
   getDashboardStats,
   getPendingVerifications,
+  getQueueBuckets,
   getStorageUsage,
   getUpcomingAppointments,
 } from "@/lib/admin";
+import { db } from "@/db";
+import { services } from "@/db/schema";
 import { formatIst } from "@/lib/time";
+import { sheetUrl } from "@/lib/sheets";
 import ArchiveTool from "@/components/admin/ArchiveTool";
+import Bucket from "@/components/admin/QueueBucket";
+import FilledSlotsManager from "@/components/admin/FilledSlotsManager";
 
 export const dynamic = "force-dynamic";
 
@@ -23,18 +29,86 @@ function Stat({ label, value, href, accent }) {
 }
 
 export default async function AdminDashboard() {
-  const [stats, pending, upcoming, storage] = await Promise.all([
-    getDashboardStats().catch(() => ({})),
-    getPendingVerifications().catch(() => []),
-    getUpcomingAppointments(8).catch(() => []),
-    getStorageUsage().catch(() => null),
-  ]);
+  const [stats, pending, upcoming, storage, queue, serviceRows] =
+    await Promise.all([
+      getDashboardStats().catch(() => ({})),
+      getPendingVerifications().catch(() => []),
+      getUpcomingAppointments(8).catch(() => []),
+      getStorageUsage().catch(() => null),
+      getQueueBuckets().catch(() => ({ remaining: [], delayed: [], completed: [] })),
+      db
+        .select({ id: services.id, title: services.title, mode: services.mode, active: services.active })
+        .from(services)
+        .orderBy(services.sortOrder)
+        .catch(() => []),
+    ]);
+  const sheet = sheetUrl();
 
   return (
     <div className="space-y-8">
       <h1 className="font-display text-2xl text-sage-deep font-semibold">
         Dashboard
       </h1>
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="font-semibold text-ink">Today&apos;s queue</h2>
+            <span className="text-xs rounded-full bg-sage-soft px-2 py-0.5">
+              Remaining {queue.remaining.length}
+            </span>
+            <span className="text-xs rounded-full bg-sage-soft px-2 py-0.5">
+              Delayed {queue.delayed.length}
+            </span>
+            <span className="text-xs rounded-full bg-sage-soft px-2 py-0.5">
+              Completed {queue.completed.length}
+            </span>
+          </div>
+          <Link href="/admin/queue" className="btn-ghost text-sm">
+            Open full queue →
+          </Link>
+        </div>
+        <Bucket
+          title="Remaining"
+          hint="Confirmed and still upcoming — soonest first."
+          rows={queue.remaining}
+          actionable
+        />
+        <Bucket
+          title="Delayed"
+          hint="Confirmed but their time has passed while a consult overran — waiting in queue."
+          rows={queue.delayed}
+          actionable
+        />
+      </section>
+
+      <details className="card-warm p-5">
+        <summary className="font-semibold text-ink cursor-pointer">
+          Mark slots as booked
+        </summary>
+        <div className="mt-4">
+          <FilledSlotsManager services={serviceRows} />
+        </div>
+      </details>
+
+      <section>
+        <h2 className="font-semibold text-ink mb-3">Consultation records</h2>
+        <div className="card-warm p-5 flex items-center gap-3 flex-wrap">
+          {sheet && (
+            <a
+              href={sheet}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-ghost text-sm"
+            >
+              Open Google Sheet
+            </a>
+          )}
+          <a href="/admin/queue/export" className="btn-ghost text-sm" download>
+            Download CSV
+          </a>
+        </div>
+      </section>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat

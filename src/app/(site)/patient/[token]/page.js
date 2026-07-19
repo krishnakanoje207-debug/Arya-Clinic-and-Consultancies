@@ -7,9 +7,11 @@ import { appointments, patients, services } from "@/db/schema";
 import { formatIst, nowUtc } from "@/lib/time";
 import { tokenSchema } from "@/lib/validation";
 import { listOrdersForPatient } from "@/lib/medications";
+import { reviewExistsForPatient } from "@/lib/reviews";
 import { getSettings } from "@/lib/settings";
 import { upiQrDataUrl } from "@/lib/upi";
 import MedicationOrderCard from "@/components/MedicationOrderCard";
+import ReviewForm from "@/components/ReviewForm";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +109,8 @@ export default async function PatientDashboard({ params }) {
     const key = `medication.durations.${days}`;
     return t.has(key) ? t(key) : t("medication.supplyDays", { days });
   };
+
+  const alreadyReviewed = await reviewExistsForPatient(patient.id);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
@@ -275,6 +279,17 @@ export default async function PatientDashboard({ params }) {
         ) : (
           <p className="text-sm text-ink-soft">{t("medication.empty")}</p>
         )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="font-display text-xl text-sage-deep font-semibold mb-4">
+          {t("review.heading")}
+        </h2>
+        <ReviewForm
+          token={patient.dashboardToken}
+          defaultName={patient.name}
+          alreadySubmitted={alreadyReviewed}
+        />
       </section>
 
       <Link

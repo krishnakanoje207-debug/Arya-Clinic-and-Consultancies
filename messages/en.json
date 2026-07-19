@@ -32,6 +32,26 @@
       "generic": "Something went wrong. Please check your details and try again."
     }
   },
+  "review": {
+    "heading": "Share your experience",
+    "intro": "How has your treatment been going? Your words help others who are considering care.",
+    "nameLabel": "Display name",
+    "nameHint": "You may use just your initials if you prefer to keep your name private.",
+    "ratingLabel": "Your rating",
+    "starLabel": "{n} star",
+    "ratingRequired": "Please choose a star rating.",
+    "textLabel": "Your review",
+    "textPlaceholder": "Tell us about your experience with the treatment…",
+    "consent": "I agree this review may be published on the clinic's website.",
+    "submit": "Submit review",
+    "thankYou": "Thank you for sharing your experience. Your review will appear on the website after the doctor has reviewed it.",
+    "errors": {
+      "invalid": "Please check your review — the name and review text are required, with a rating and consent.",
+      "not_found": "We could not verify your link. Please reopen your dashboard link and try again.",
+      "already_submitted": "You have already shared a review. Thank you!",
+      "generic": "Something went wrong. Please check your details and try again."
+    }
+  },
   "nav": {
     "home": "Home",
     "about": "About",

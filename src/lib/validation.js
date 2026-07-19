@@ -69,6 +69,18 @@ export const medicationPaymentSchema = z.object({
   utr: utrSchema,
 });
 
+/** Patient reviewing their treatment from their dashboard. token identifies the
+ * patient (private dashboard token); displayName may be initials for privacy;
+ * consent must be affirmatively checked before it can be published. Lands as an
+ * UNPUBLISHED testimonials row — the doctor moderates/publishes as usual. */
+export const patientReviewSchema = z.object({
+  token: tokenSchema,
+  displayName: z.string().trim().min(2).max(80),
+  text: z.string().trim().min(20).max(1500),
+  rating: z.coerce.number().int().min(1).max(5),
+  consentConfirmed: z.literal(true),
+});
+
 /** Quiz lead: only the slug, phone and raw answers are trusted from the
  * client. The server recomputes score/result from the answers against the
  * quiz definition, so no score is accepted from the browser. Answers are

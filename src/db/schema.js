@@ -268,6 +268,7 @@ export const conditions = pgTable("conditions", {
 
 export const testimonials = pgTable("testimonials", {
   id: serial("id").primaryKey(),
+  patientId: integer("patient_id").references(() => patients.id), // set when a patient self-submits from their dashboard; null for doctor-entered rows
   patientName: text("patient_name").notNull(), // name or initials
   text: text("text").notNull(),
   textHi: text("text_hi"),
