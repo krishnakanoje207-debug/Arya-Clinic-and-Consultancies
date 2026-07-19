@@ -19,17 +19,19 @@ import { pathToFileURL } from "node:url";
 register("./scripts/alias-loader.mjs", pathToFileURL("./").href);
 
 const { DateTime } = await import("luxon");
-const { eq } = await import("drizzle-orm");
+const { eq, inArray } = await import("drizzle-orm");
 const { db } = await import("@/db");
 const { appointments, availabilityRules, filledSlots, patients, services } =
   await import("@/db/schema");
-const { istWallToUtc } = await import("@/lib/time");
+const { istToday, istWallToUtc } = await import("@/lib/time");
 const {
   createBooking,
   getAdminDaySlots,
   overlapsFilledSlot,
 } = await import("@/lib/booking");
-const { getQueueBuckets, completeAppointmentRow } = await import("@/lib/admin");
+const { getQueueBuckets, completeAppointmentRow, shiftTodaysAppointments } =
+  await import("@/lib/admin");
+const { dispatchFollowUpNudge } = await import("@/lib/notify");
 const {
   appendCompletedAppointmentRow,
   sheetsConfigured,
@@ -169,6 +171,79 @@ try {
   log(row.length === COMPLETED_HEADERS.length, `buildCompletedRow width matches headers (${row.length}/${COMPLETED_HEADERS.length})`);
   const assembled = await assembleCompletedRow(completed, "Test Service");
   log(assembled.length === COMPLETED_HEADERS.length, "assembleCompletedRow width matches headers");
+
+  // --- Feature A: shiftTodaysAppointments (Running late) ---
+  // Three confirmed appointments today at consecutive IST slots.
+  const today = istToday();
+  const base = istWallToUtc(today, "01:00"); // quiet hour, unlikely to collide
+  const seeded = [];
+  for (let i = 0; i < 3; i++) {
+    const s = new Date(base.getTime() + i * len * 60000);
+    seeded.push(await mkAppt(s));
+  }
+  const originalStart = new Map(seeded.map((r) => [r.id, new Date(r.startAt).getTime()]));
+  const originalEnd = new Map(seeded.map((r) => [r.id, new Date(r.endAt).getTime()]));
+
+  const shifted = await shiftTodaysAppointments(15);
+  const shiftedIds = new Set(shifted.map((r) => r.id));
+  log(
+    seeded.every((r) => shiftedIds.has(r.id)),
+    "shiftTodaysAppointments returned all 3 seeded rows",
+  );
+
+  const afterRows = await db
+    .select()
+    .from(appointments)
+    .where(inArray(appointments.id, seeded.map((r) => r.id)));
+  const allMoved = afterRows.every(
+    (r) =>
+      new Date(r.startAt).getTime() === originalStart.get(r.id) + 15 * 60000 &&
+      new Date(r.endAt).getTime() === originalEnd.get(r.id) + 15 * 60000,
+  );
+  log(allMoved, "all 3 shifted exactly +15 min (start_at and end_at) — no constraint error");
+
+  const orderedBefore = seeded.map((r) => r.id);
+  const orderedAfter = [...afterRows]
+    .sort((a, b) => new Date(a.startAt) - new Date(b.startAt))
+    .map((r) => r.id);
+  log(
+    JSON.stringify(orderedBefore) === JSON.stringify(orderedAfter),
+    "relative order preserved after shift",
+  );
+
+  let rejected = false;
+  try {
+    await shiftTodaysAppointments(20);
+  } catch {
+    rejected = true;
+  }
+  log(rejected, "shiftTodaysAppointments(20) rejected (invalid interval)");
+
+  // --- Feature B: dispatchFollowUpNudge no-ops without notification env ---
+  const savedNotify = {
+    GMAIL_USER: process.env.GMAIL_USER,
+    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD,
+    TEXTBEE_API_KEY: process.env.TEXTBEE_API_KEY,
+    TEXTBEE_DEVICE_ID: process.env.TEXTBEE_DEVICE_ID,
+  };
+  delete process.env.GMAIL_USER;
+  delete process.env.GMAIL_APP_PASSWORD;
+  delete process.env.TEXTBEE_API_KEY;
+  delete process.env.TEXTBEE_DEVICE_ID;
+  try {
+    const channels = await dispatchFollowUpNudge({
+      name: "E2E Admin",
+      phone: NORM,
+      email: "e2e@example.com",
+      dashboardToken: "e2e-token",
+    });
+    log(
+      channels.email === false && channels.sms === false,
+      "dispatchFollowUpNudge returns all-false without throwing when notify env blank",
+    );
+  } finally {
+    Object.assign(process.env, savedNotify);
+  }
 } finally {
   await db.delete(appointments).where(eq(appointments.patientPhone, NORM));
   await db.delete(filledSlots).where(eq(filledSlots.startAt, istWallToUtc(DATE, "10:00")));

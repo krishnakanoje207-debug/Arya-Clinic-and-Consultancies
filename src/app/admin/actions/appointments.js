@@ -6,12 +6,13 @@ import { db } from "@/db";
 import { appointments } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { expireStaleHolds } from "@/lib/booking";
-import { completeAppointmentRow } from "@/lib/admin";
+import { completeAppointmentRow, shiftTodaysAppointments } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
 import { appendCompletedAppointmentRow } from "@/lib/sheets";
 import {
   createAppointmentEvent,
   deleteAppointmentEvent,
+  updateAppointmentEvent,
 } from "@/lib/gcal";
 
 async function guard() {
@@ -91,6 +92,24 @@ export async function markAppointmentCompleted(id) {
   revalidatePath("/admin/queue");
   revalidatePath("/admin");
   return { ok: true };
+}
+
+/**
+ * "Running late": shift every still-confirmed appointment in today's IST day
+ * later by minutes ∈ {15,30,45}, preserving order. For each shifted row we
+ * best-effort patch its calendar event and send a "rescheduled" notification
+ * (both never throw by design). Returns { ok, count }. */
+export async function runningLate(minutes) {
+  await guard();
+  const shifted = await shiftTodaysAppointments(minutes);
+  for (const appt of shifted) {
+    await updateAppointmentEvent(appt);
+    await dispatchNotification("rescheduled", appt);
+  }
+  revalidatePath("/admin");
+  revalidatePath("/admin/queue");
+  revalidatePath("/admin/appointments");
+  return { ok: true, count: shifted.length };
 }
 
 /** Clear the "paid but hold expired" flag once handled. */

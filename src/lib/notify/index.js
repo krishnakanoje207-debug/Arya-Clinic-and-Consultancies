@@ -5,7 +5,7 @@ import { getSettings } from "@/lib/settings";
 import { daysLeftForOrder } from "@/lib/medications";
 import { buildValues, renderTemplate } from "./render";
 import { sendEmail } from "./email";
-import { sendSms } from "./sms";
+import { sendSms, smsConfigured } from "./sms";
 import { buildIcs } from "./ics";
 
 /**
@@ -164,6 +164,97 @@ function buildMedicationValues(order, patient, settings, daysLeft) {
     whatsapp_link: wa,
     doctor_name: settings.payee_name || "Dr. Seema",
   };
+}
+
+/** Placeholder values for a patient follow-up nudge. Mirrors
+ * buildMedicationValues' conventions (dashboard_link, whatsapp_link) but
+ * sourced from the patient alone — a follow-up nudge has no appointment. */
+function buildFollowUpValues(patient, settings) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const wa = settings.contact_whatsapp
+    ? `https://wa.me/${String(settings.contact_whatsapp).replace(/\D/g, "")}`
+    : "";
+  return {
+    patient_name: patient.name || "",
+    doctor_name: settings.payee_name || "Dr. Seema",
+    dashboard_link:
+      siteUrl && patient.dashboardToken
+        ? `${siteUrl}/patient/${patient.dashboardToken}`
+        : "",
+    whatsapp_link: wa,
+  };
+}
+
+/**
+ * Send a patient a "time for a follow-up?" nudge on demand (admin button).
+ * Patient-based, no appointment. Uses the admin-editable follow_up templates
+ * (email + sms); when a channel has no template row it falls back to hard-coded
+ * English defaults matching the seeded follow_up text. Email goes out only when
+ * the patient has one; SMS only when the gateway is configured. Channels are
+ * independent and this NEVER throws. Returns which channels actually sent,
+ * e.g. { email: true, sms: false }. */
+export async function dispatchFollowUpNudge(patient) {
+  const sent = { email: false, sms: false };
+  try {
+    const [templates, settings] = await Promise.all([
+      db
+        .select()
+        .from(messageTemplates)
+        .where(
+          and(
+            eq(messageTemplates.event, "follow_up"),
+            eq(messageTemplates.active, true),
+          ),
+        ),
+      getSettings(["payee_name", "contact_whatsapp"]),
+    ]);
+
+    const values = buildFollowUpValues(patient, settings);
+    const emailTpl = templates.find((t) => t.channel === "email");
+    const smsTpl = templates.find((t) => t.channel === "sms");
+
+    // Hard-coded fallbacks matching the seeded follow_up template text.
+    const defaults = {
+      subject: "Time for a follow-up?",
+      body:
+        `Hi ${values.patient_name}, hope you're feeling better. Book a follow-up ` +
+        `with ${values.doctor_name} anytime from your dashboard: ${values.dashboard_link}`,
+    };
+
+    const emailSubject = emailTpl
+      ? renderTemplate(emailTpl.subject || defaults.subject, values)
+      : defaults.subject;
+    const emailBody = emailTpl
+      ? renderTemplate(emailTpl.body, values)
+      : defaults.body;
+    const smsBody = smsTpl ? renderTemplate(smsTpl.body, values) : defaults.body;
+
+    const results = await Promise.allSettled([
+      patient.email
+        ? sendEmail({ to: patient.email, subject: emailSubject, text: emailBody })
+        : Promise.resolve({ skipped: true }),
+      smsConfigured()
+        ? sendSms({ to: patient.phone, message: smsBody })
+        : Promise.resolve({ skipped: true }),
+    ]);
+
+    sent.email =
+      results[0].status === "fulfilled" && results[0].value?.sent === true;
+    sent.sms =
+      results[1].status === "fulfilled" && results[1].value?.sent === true;
+
+    for (const [i, r] of results.entries()) {
+      if (r.status === "rejected") {
+        console.error(
+          `[notify] follow_up nudge channel ${["email", "sms"][i]} failed:`,
+          r.reason?.message || r.reason,
+        );
+      }
+    }
+  } catch (err) {
+    console.error(`[notify] follow_up nudge dispatch failed:`, err?.message || err);
+  }
+  return sent;
 }
 
 /**

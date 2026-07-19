@@ -13,6 +13,7 @@ import { sheetUrl } from "@/lib/sheets";
 import ArchiveTool from "@/components/admin/ArchiveTool";
 import Bucket from "@/components/admin/QueueBucket";
 import FilledSlotsManager from "@/components/admin/FilledSlotsManager";
+import RunningLateButton from "@/components/admin/RunningLateButton";
 
 export const dynamic = "force-dynamic";
 
@@ -64,9 +65,12 @@ export default async function AdminDashboard() {
               Completed {queue.completed.length}
             </span>
           </div>
-          <Link href="/admin/queue" className="btn-ghost text-sm">
-            Open full queue →
-          </Link>
+          <div className="flex items-center gap-3 flex-wrap">
+            <RunningLateButton />
+            <Link href="/admin/queue" className="btn-ghost text-sm">
+              Open full queue →
+            </Link>
+          </div>
         </div>
         <Bucket
           title="Remaining"

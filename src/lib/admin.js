@@ -1,7 +1,7 @@
 import { and, desc, eq, gte, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
-import { nowUtc } from "@/lib/time";
+import { addMinutes, istToday, istWallToUtc, nowUtc } from "@/lib/time";
 
 /** Dashboard counters. */
 export async function getDashboardStats() {
@@ -121,6 +121,55 @@ export async function completeAppointmentRow(id) {
     .where(and(eq(appointments.id, Number(id)), eq(appointments.status, "confirmed")))
     .returning();
   return row;
+}
+
+/**
+ * "Running late": shift EVERY still-confirmed appointment in today's IST day
+ * later by the same interval, preserving relative order so nobody is skipped.
+ * Targets status='confirmed' with start_at inside today's IST day — which
+ * intentionally includes the "delayed" bucket (start already passed, patient
+ * still queued). Shifts start_at AND end_at by the same amount.
+ *
+ * The appointments_no_overlap EXCLUSION constraint (on confirmed/pending rows)
+ * is NOT deferrable: shifting an earlier row forward could transiently overlap
+ * the next one. So we update one row per statement in DESCENDING start_at order
+ * (latest first — with an equal shift it can never overlap the row after it),
+ * executed atomically via db.batch() (neon-http has no session transactions).
+ * Returns the updated rows. */
+export async function shiftTodaysAppointments(minutes) {
+  if (![15, 30, 45].includes(minutes)) {
+    throw new Error("minutes must be 15, 30 or 45");
+  }
+  const dayStart = istWallToUtc(istToday(), "00:00");
+  const dayEnd = addMinutes(dayStart, 24 * 60);
+
+  const rows = await db
+    .select()
+    .from(appointments)
+    .where(
+      and(
+        eq(appointments.status, "confirmed"),
+        gte(appointments.startAt, dayStart),
+        lt(appointments.startAt, dayEnd),
+      ),
+    )
+    .orderBy(desc(appointments.startAt));
+  if (rows.length === 0) return [];
+
+  const now = nowUtc();
+  const stmts = rows.map((r) =>
+    db
+      .update(appointments)
+      .set({
+        startAt: addMinutes(new Date(r.startAt), minutes),
+        endAt: addMinutes(new Date(r.endAt), minutes),
+        updatedAt: now,
+      })
+      .where(eq(appointments.id, r.id))
+      .returning(),
+  );
+  const results = await db.batch(stmts);
+  return results.map((r) => r[0]);
 }
 
 /** Live database size + a soft percentage of Neon's 0.5 GB free tier, for

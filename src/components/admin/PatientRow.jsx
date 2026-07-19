@@ -1,7 +1,24 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { regeneratePatientLink } from "@/app/admin/actions/patients";
+import {
+  regeneratePatientLink,
+  sendFollowUpNudge,
+} from "@/app/admin/actions/patients";
+
+/** Human-readable feedback for a follow-up nudge result. */
+function nudgeLabel(nudge) {
+  if (nudge.ok) {
+    const via = [nudge.channels.email && "email", nudge.channels.sms && "SMS"]
+      .filter(Boolean)
+      .join(" & ");
+    return { text: `Sent via ${via}`, ok: true };
+  }
+  if (nudge.reason === "no_channel") {
+    return { text: "No email or SMS available — use WhatsApp", ok: false };
+  }
+  return { text: "Could not send", ok: false };
+}
 
 /** One patient row: copy the private dashboard link, or regenerate it (which
  * invalidates the old link). `dashboardUrl` is the full absolute link built
@@ -14,6 +31,12 @@ export default function PatientRow({
 }) {
   const [pending, startTransition] = useTransition();
   const [copied, setCopied] = useState(false);
+  const [nudge, setNudge] = useState(null);
+
+  function sendNudge() {
+    setNudge(null);
+    startTransition(async () => setNudge(await sendFollowUpNudge(patient.id)));
+  }
 
   function copy() {
     navigator.clipboard?.writeText(dashboardUrl).then(() => {
@@ -50,6 +73,14 @@ export default function PatientRow({
           </button>
           <button
             type="button"
+            onClick={sendNudge}
+            disabled={pending}
+            className="btn-ghost text-xs py-1 px-3"
+          >
+            Send follow-up
+          </button>
+          <button
+            type="button"
             onClick={regenerate}
             disabled={pending}
             className="text-xs py-1 px-3 text-red-600 hover:underline"
@@ -57,6 +88,15 @@ export default function PatientRow({
             Regenerate
           </button>
         </div>
+        {nudge && (
+          <p
+            className={`mt-1 text-xs ${
+              nudgeLabel(nudge).ok ? "text-sage-deep" : "text-terracotta-deep"
+            }`}
+          >
+            {nudgeLabel(nudge).text}
+          </p>
+        )}
       </td>
     </tr>
   );
