@@ -108,6 +108,19 @@ export async function clearReview(id) {
   revalidatePath("/admin");
 }
 
+export async function saveMeetingLink(id, meetingLink) {
+  await guard();
+  const [row] = await db
+    .update(appointments)
+    .set({ meetingLink: meetingLink?.trim() || null, updatedAt: new Date() })
+    .where(eq(appointments.id, Number(id)))
+    .returning();
+  if (row?.status === "confirmed") {
+    await updateAppointmentEvent(row);
+  }
+  revalidatePath("/admin/appointments");
+}
+
 export async function saveDoctorNotes(id, notes) {
   await guard();
   await db

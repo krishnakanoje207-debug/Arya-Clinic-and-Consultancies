@@ -7,6 +7,7 @@ import {
   confirmAppointment,
   markAppointmentCompleted,
   saveDoctorNotes,
+  saveMeetingLink,
 } from "@/app/admin/actions/appointments";
 
 const STATUS_STYLE = {
@@ -133,8 +134,16 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
                   className="w-full rounded border border-[var(--border)] px-2 py-1"
                 />
                 <p className="text-xs text-ink-soft mt-1">
-                  Included in confirmation &amp; reminder messages.
+                  Included in confirmation &amp; reminder messages and shown on
+                  the patient dashboard.
                 </p>
+                <button
+                  onClick={() => run(() => saveMeetingLink(appt.id, meetingLink))}
+                  disabled={pending}
+                  className="btn-ghost text-xs py-1 px-3 mt-2"
+                >
+                  Save link
+                </button>
 
                 <label className="block font-semibold mb-1 mt-4">
                   Private consultation notes
