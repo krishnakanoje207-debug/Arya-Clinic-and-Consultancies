@@ -3,7 +3,6 @@
 import { useState, useTransition } from "react";
 import {
   cancelMedicationOrder,
-  markMedicationPaid,
   markMedicationShipped,
 } from "@/app/admin/actions/medications";
 
@@ -15,9 +14,9 @@ const STATUS_STYLE = {
 };
 
 /** One admin medication-order row. Actions depend on status: pending_payment →
- * mark paid (after verifying the shown UTR against the doctor's bank SMS) or
- * cancel; paid → mark shipped (optional courier ref) or cancel; shipped is
- * terminal. Surfaces a failed action with an alert, like AppointmentRow. */
+ * cancel only (the Razorpay webhook marks it paid automatically); paid → mark
+ * shipped (optional courier ref) or cancel; shipped is terminal. Surfaces a
+ * failed action with an alert, like AppointmentRow. */
 export default function MedicationRow({ order, patientName, patientPhone, createdLabel }) {
   const [pending, startTransition] = useTransition();
   const [courierRef, setCourierRef] = useState("");
@@ -79,22 +78,13 @@ export default function MedicationRow({ order, patientName, patientPhone, create
       </td>
       <td className="p-3 text-right whitespace-nowrap">
         {order.status === "pending_payment" && (
-          <div className="space-x-1">
-            <button
-              onClick={() => run(() => markMedicationPaid(order.id))}
-              disabled={pending}
-              className="btn-primary text-xs py-1 px-3"
-            >
-              Mark paid
-            </button>
-            <button
-              onClick={() => run(() => cancelMedicationOrder(order.id))}
-              disabled={pending}
-              className="text-xs py-1 px-3 text-red-600 hover:underline"
-            >
-              Cancel
-            </button>
-          </div>
+          <button
+            onClick={() => run(() => cancelMedicationOrder(order.id))}
+            disabled={pending}
+            className="text-xs py-1 px-3 text-red-600 hover:underline"
+          >
+            Cancel
+          </button>
         )}
         {order.status === "paid" && (
           <div className="flex flex-col items-end gap-1">

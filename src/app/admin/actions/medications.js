@@ -52,25 +52,6 @@ export async function createMedicationOrder(input) {
   return { ok: true, order };
 }
 
-/** Verify the UPI credit and mark the order paid (only from pending_payment). */
-export async function markMedicationPaid(orderId) {
-  await guard();
-  const now = new Date();
-  const [row] = await db
-    .update(medicationOrders)
-    .set({ status: "paid", paidAt: now, updatedAt: now })
-    .where(
-      and(
-        eq(medicationOrders.id, Number(orderId)),
-        eq(medicationOrders.status, "pending_payment"),
-      ),
-    )
-    .returning();
-  if (!row) return { ok: false, reason: "bad_state" };
-  revalidatePath("/admin/medications");
-  return { ok: true };
-}
-
 /** Mark the order shipped with an optional courier reference (only from paid). */
 export async function markMedicationShipped(orderId, courierRef) {
   await guard();

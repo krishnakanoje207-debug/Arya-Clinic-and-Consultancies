@@ -23,7 +23,7 @@ register("./scripts/alias-loader.mjs", pathToFileURL("./").href);
 const { eq, inArray } = await import("drizzle-orm");
 const { db } = await import("@/db");
 const { medicationOrders, patients } = await import("@/db/schema");
-const { submitMedicationPayment, getMedicationReminders } = await import(
+const { beginMedicationPayment, getMedicationReminders } = await import(
   "@/lib/medications"
 );
 
@@ -60,19 +60,17 @@ try {
     .returning();
   log(order?.status === "pending_payment", `created order #${order.id} (pending_payment)`);
 
-  // --- Patient pays: happy path (real submitMedicationPayment) ---
+  // --- Patient pays: happy path (real beginMedicationPayment; webhook marks paid) ---
   const ADDR = "123 Test Lane, Nagpur, PIN 440001";
-  const pay = await submitMedicationPayment(token, {
+  const pay = await beginMedicationPayment(token, {
     orderId: order.id,
     durationDays: 30,
     address: ADDR,
-    utr: "MEDUTR123456",
   });
   log(pay.ok, `payment accepted (ok=${pay.ok})`);
   log(pay.order?.chosenDurationDays === 30, `chosen duration recorded (${pay.order?.chosenDurationDays})`);
   log(pay.order?.amountInr === 500, `amount copied from matching option (₹${pay.order?.amountInr})`);
-  log(pay.order?.utr === "MEDUTR123456", `UTR recorded (${pay.order?.utr})`);
-  log(!!pay.order?.utrSubmittedAt, `UTR submitted-at stamped`);
+  log(pay.order?.status === "pending_payment", `order stays pending until the webhook (${pay.order?.status})`);
 
   const [afterPay] = await db
     .select()
@@ -89,11 +87,10 @@ try {
       options: [{ days: 15, amountInr: 250 }],
     })
     .returning();
-  const badDur = await submitMedicationPayment(token, {
+  const badDur = await beginMedicationPayment(token, {
     orderId: order2.id,
     durationDays: 60,
     address: ADDR,
-    utr: "MEDUTR654321",
   });
   log(!badDur.ok && badDur.reason === "bad_duration", `duration not in options rejected (${badDur.reason})`);
 
@@ -102,11 +99,10 @@ try {
     .update(medicationOrders)
     .set({ status: "paid", paidAt: new Date(), updatedAt: new Date() })
     .where(eq(medicationOrders.id, order.id));
-  const rePay = await submitMedicationPayment(token, {
+  const rePay = await beginMedicationPayment(token, {
     orderId: order.id,
     durationDays: 15,
     address: ADDR,
-    utr: "MEDUTR999999",
   });
   log(!rePay.ok && rePay.reason === "already_paid", `paying an already-paid order rejected (${rePay.reason})`);
 
