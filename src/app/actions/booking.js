@@ -91,6 +91,7 @@ export async function createBookingAction(input) {
     booking: {
       id: appt.id,
       manageToken: appt.manageToken,
+      dashboardToken: result.dashboardToken,
       amountInr: appt.amountInr,
       holdExpiresAt: appt.holdExpiresAt,
     },

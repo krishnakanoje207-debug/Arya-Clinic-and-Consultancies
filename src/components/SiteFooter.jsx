@@ -153,17 +153,6 @@ export default async function SiteFooter() {
                 {t("contact.hours")}: {s.consultation_hours}
               </li>
             )}
-            {s.contact_phone && (
-              <li>
-                {t("contact.call")}:{" "}
-                <a
-                  href={`tel:${String(s.contact_phone).replace(/\s/g, "")}`}
-                  className="hover:text-sage-deep"
-                >
-                  {s.contact_phone}
-                </a>
-              </li>
-            )}
             {wa && (
               <li>
                 <a href={wa} className="hover:text-sage-deep" target="_blank" rel="noreferrer">

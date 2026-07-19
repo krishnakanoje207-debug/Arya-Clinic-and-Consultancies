@@ -1,0 +1,292 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { getLocale, getTranslations } from "next-intl/server";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/db";
+import { appointments, patients, services } from "@/db/schema";
+import { formatIst, nowUtc } from "@/lib/time";
+import { tokenSchema } from "@/lib/validation";
+import { listOrdersForPatient } from "@/lib/medications";
+import { getSettings } from "@/lib/settings";
+import { upiQrDataUrl } from "@/lib/upi";
+import MedicationOrderCard from "@/components/MedicationOrderCard";
+
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata() {
+  const t = await getTranslations("patientDashboard");
+  return { title: t("title"), robots: { index: false, follow: false } };
+}
+
+const STATUS_STYLE = {
+  pending_payment: "bg-gold-soft text-ink",
+  confirmed: "bg-sage-soft text-sage-deep",
+  completed: "bg-sage-soft text-sage-deep",
+  cancelled: "bg-terracotta text-white",
+  expired: "bg-cream-deep text-ink-soft",
+};
+
+const MED_STATUS_STYLE = {
+  pending_payment: "bg-gold-soft text-ink",
+  paid: "bg-sage-soft text-sage-deep",
+  shipped: "bg-sage-soft text-sage-deep",
+  cancelled: "bg-terracotta text-white",
+};
+
+function isUpcoming(a, now) {
+  return (
+    new Date(a.startAt) >= now &&
+    ["confirmed", "pending_payment"].includes(a.status)
+  );
+}
+
+export default async function PatientDashboard({ params }) {
+  const { token } = await params;
+  const parsed = tokenSchema.safeParse(token);
+  if (!parsed.success) notFound();
+
+  const t = await getTranslations();
+  const locale = await getLocale();
+
+  let patient = null;
+  try {
+    [patient] = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.dashboardToken, parsed.data));
+  } catch {
+    notFound();
+  }
+  if (!patient) notFound();
+
+  const rows = await db
+    .select({
+      appt: appointments,
+      serviceTitle: services.title,
+      serviceTitleHi: services.titleHi,
+    })
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .where(eq(appointments.patientId, patient.id))
+    .orderBy(desc(appointments.startAt));
+
+  const now = nowUtc();
+  const upcoming = rows.filter((r) => isUpcoming(r.appt, now)).reverse();
+  const past = rows.filter((r) => !isUpcoming(r.appt, now));
+
+  const serviceTitle = (r) =>
+    (locale === "hi" && r.serviceTitleHi) || r.serviceTitle || "";
+
+  // Medication orders + UPI payment context. QR data URLs are pre-rendered here
+  // (server) per option of every payable order so the client card never imports
+  // qrcode/db code. buildUpiString/upiQrDataUrl encode the same upi://pay string
+  // the consultation flow uses.
+  const medOrders = await listOrdersForPatient(patient.id);
+  const upi = await getSettings(["upi_id", "payee_name"]);
+  const payeeName = upi.payee_name || "Dr. Seema";
+  const medCards = await Promise.all(
+    medOrders.map(async (o) => {
+      const payable = o.status === "pending_payment" && !o.utr;
+      let qrByDays = null;
+      if (payable && upi.upi_id) {
+        qrByDays = {};
+        for (const opt of Array.isArray(o.options) ? o.options : []) {
+          qrByDays[String(opt.days)] = await upiQrDataUrl({
+            upiId: upi.upi_id,
+            payeeName,
+            amountInr: opt.amountInr,
+            note: `Meds ${o.id}`,
+          });
+        }
+      }
+      return { order: o, payable, qrByDays };
+    }),
+  );
+
+  const durationLabel = (days) => {
+    const key = `medication.durations.${days}`;
+    return t.has(key) ? t(key) : t("medication.supplyDays", { days });
+  };
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-12">
+      <h1 className="font-display text-3xl text-sage-deep font-semibold mb-2">
+        {t("patientDashboard.greeting", { name: patient.name })}
+      </h1>
+      <p className="text-ink-soft mb-8">{t("patientDashboard.title")}</p>
+
+      <section className="mb-10">
+        <h2 className="font-display text-xl text-sage-deep font-semibold mb-4">
+          {t("patientDashboard.upcomingHeading")}
+        </h2>
+        {upcoming.length ? (
+          <div className="space-y-4">
+            {upcoming.map(({ appt: a, ...r }) => (
+              <div key={a.id} className="card-warm p-5 space-y-2">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">{serviceTitle(r)}</p>
+                    <p className="text-sm text-ink-soft">
+                      {formatIst(a.startAt, "dd LLL yyyy")} ·{" "}
+                      {formatIst(a.startAt, "hh:mm a")} –{" "}
+                      {formatIst(a.endAt, "hh:mm a")} IST
+                    </p>
+                    <p className="text-sm text-ink-soft">
+                      {t(
+                        a.mode === "online"
+                          ? "booking.modeOnline"
+                          : "booking.modeClinic",
+                      )}
+                    </p>
+                  </div>
+                  <span
+                    className={`shrink-0 text-xs px-2 py-1 rounded-full ${STATUS_STYLE[a.status]}`}
+                  >
+                    {t(`patientDashboard.status.${a.status}`)}
+                  </span>
+                </div>
+                {a.problemNote && (
+                  <p className="text-sm text-ink">
+                    <span className="text-ink-soft">
+                      {t("patientDashboard.yourNote")}
+                    </span>{" "}
+                    {a.problemNote}
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-3 pt-1">
+                  {a.status === "confirmed" && a.meetingLink && (
+                    <a href={a.meetingLink} className="btn-primary text-sm">
+                      {t("patientDashboard.join")}
+                    </a>
+                  )}
+                  <Link
+                    href={`/manage/${a.manageToken}`}
+                    className="btn-ghost text-sm"
+                  >
+                    {t("patientDashboard.manage")}
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-soft">
+            {t("patientDashboard.noUpcoming")}
+          </p>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="font-display text-xl text-sage-deep font-semibold mb-4">
+          {t("patientDashboard.pastHeading")}
+        </h2>
+        {past.length ? (
+          <div className="card-warm divide-y divide-[var(--border)]">
+            {past.map(({ appt: a, ...r }) => (
+              <div
+                key={a.id}
+                className="flex items-center justify-between gap-3 p-4 text-sm"
+              >
+                <div>
+                  <p className="text-ink">{serviceTitle(r)}</p>
+                  <p className="text-ink-soft">
+                    {formatIst(a.startAt, "dd LLL yyyy")} IST
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 text-xs px-2 py-1 rounded-full ${STATUS_STYLE[a.status]}`}
+                >
+                  {t(`patientDashboard.status.${a.status}`)}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-soft">{t("patientDashboard.noPast")}</p>
+        )}
+      </section>
+
+      <section className="mb-10">
+        <h2 className="font-display text-xl text-sage-deep font-semibold mb-4">
+          {t("medication.title")}
+        </h2>
+        {medCards.length ? (
+          <div className="space-y-4">
+            {medCards.map(({ order: o, payable, qrByDays }) => (
+              <div key={o.id} className="card-warm p-5 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-ink">{o.title}</p>
+                    {o.chosenDurationDays && o.amountInr != null && (
+                      <p className="text-sm text-ink-soft">
+                        {durationLabel(o.chosenDurationDays)} · ₹{o.amountInr}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`shrink-0 text-xs px-2 py-1 rounded-full ${MED_STATUS_STYLE[o.status]}`}
+                  >
+                    {t(`medication.status.${o.status}`)}
+                  </span>
+                </div>
+
+                {o.status === "pending_payment" && o.utr && (
+                  <p className="text-sm text-sage-deep">
+                    {t("medication.submitted")}
+                    {o.amountInr != null && (
+                      <span className="block text-ink-soft">
+                        {t("medication.amountLabel")}: ₹{o.amountInr} ·{" "}
+                        {t("booking.utrLabel")}: {o.utr}
+                      </span>
+                    )}
+                  </p>
+                )}
+
+                {payable && (
+                  <MedicationOrderCard
+                    dashboardToken={patient.dashboardToken}
+                    order={{ id: o.id, title: o.title, options: o.options }}
+                    prefillAddress={patient.address || ""}
+                    upiId={upi.upi_id || ""}
+                    payeeName={payeeName}
+                    qrByDays={qrByDays}
+                  />
+                )}
+
+                {o.status === "paid" && (
+                  <p className="text-sm text-sage-deep">
+                    {t("medication.preparing")}
+                  </p>
+                )}
+
+                {o.status === "shipped" && (
+                  <p className="text-sm text-ink-soft">
+                    {t("medication.shippedLabel")}
+                    {o.courierRef && (
+                      <span className="block">
+                        {t("medication.courierRef")}: {o.courierRef}
+                      </span>
+                    )}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-ink-soft">{t("medication.empty")}</p>
+        )}
+      </section>
+
+      <Link
+        href={`/book?p=${patient.dashboardToken}`}
+        className="btn-primary inline-block"
+      >
+        {t("patientDashboard.bookFollowUp")}
+      </Link>
+
+      <p className="mt-8 text-xs text-ink-soft">
+        {t("patientDashboard.privateNote")}
+      </p>
+    </div>
+  );
+}

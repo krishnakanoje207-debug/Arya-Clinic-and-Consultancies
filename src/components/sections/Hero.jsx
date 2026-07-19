@@ -14,7 +14,6 @@ export default async function Hero({ profile, locale, bookFee = null }) {
   const t = await getTranslations("hero");
   const name = profile?.name || "Dr. Seema Prajapati";
   const tagline = localized(profile, "tagline", locale);
-  const years = profile?.yearsExperience;
   const degrees = Array.isArray(profile?.degrees) ? profile.degrees : [];
   // Up to 3 stats; label follows the UI language (label_hi → label).
   const stats = (Array.isArray(profile?.stats) ? profile.stats : []).slice(0, 3);
@@ -32,20 +31,15 @@ export default async function Hero({ profile, locale, bookFee = null }) {
       <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24 md:min-h-[68vh] grid md:grid-cols-[1.35fr_0.65fr] gap-10 items-center">
         <div>
           <Reveal>
-            {years ? (
-              <p className="inline-block rounded-full bg-sage-soft text-sage-deep px-4 py-1 text-sm font-semibold">
-                🌿 {years}+ {t("yearsSuffix")}
-              </p>
+            {tagline ? (
+              <p className="text-lg text-sage-deep font-semibold">{tagline}</p>
             ) : null}
-            <h1 className="mt-5 font-display text-4xl md:text-5xl font-semibold text-ink leading-tight">
+            <h1 className="mt-3 font-display text-4xl md:text-5xl font-semibold text-ink leading-tight">
               <span className="title-accent">{name}</span>
             </h1>
           </Reveal>
 
           <Reveal delay={120}>
-            {tagline ? (
-              <p className="mt-4 text-lg text-ink-soft max-w-md">{tagline}</p>
-            ) : null}
             {degrees.length ? (
               <ul className="mt-4 flex flex-wrap gap-2">
                 {degrees

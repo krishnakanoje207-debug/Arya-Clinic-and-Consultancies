@@ -15,6 +15,8 @@ export const patientSchema = z.object({
     .trim()
     .regex(/^\+?[0-9][0-9 \-]{5,17}$/, "invalid phone"),
   email: z.union([z.literal(""), z.string().trim().email().max(254)]).nullish(),
+  // Patient's own description of the problem, collected at booking.
+  note: trimmed(2000),
 });
 
 export const bookingInputSchema = z.object({
@@ -53,6 +55,19 @@ export const contactSchema = z.object({
 
 /** Manage tokens are UUIDs we generated — reject anything else early. */
 export const tokenSchema = z.string().uuid();
+
+/** Patient paying for a medication order: which order, the enabled duration
+ * they picked (15/30/60 days), shipping address and their UPI transaction ref.
+ * The server re-checks durationDays against the order's own options. */
+export const medicationPaymentSchema = z.object({
+  orderId: z.coerce.number().int().positive(),
+  durationDays: z.coerce
+    .number()
+    .int()
+    .refine((d) => d === 15 || d === 30 || d === 60, "invalid duration"),
+  address: trimmed(500),
+  utr: utrSchema,
+});
 
 /** Quiz lead: only the slug, phone and raw answers are trusted from the
  * client. The server recomputes score/result from the answers against the

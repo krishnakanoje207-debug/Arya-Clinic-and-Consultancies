@@ -1,7 +1,8 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { messageTemplates, services } from "@/db/schema";
+import { messageTemplates, patients, services } from "@/db/schema";
 import { getSettings } from "@/lib/settings";
+import { daysLeftForOrder } from "@/lib/medications";
 import { buildValues, renderTemplate } from "./render";
 import { sendEmail } from "./email";
 import { sendSms } from "./sms";
@@ -21,7 +22,7 @@ import { buildIcs } from "./ics";
  */
 export async function dispatchNotification(event, appt, opts = {}) {
   try {
-    const [templates, settings, serviceTitle] = await Promise.all([
+    const [templates, settings, serviceTitle, dashboardToken] = await Promise.all([
       db
         .select()
         .from(messageTemplates)
@@ -42,9 +43,16 @@ export async function dispatchNotification(event, appt, opts = {}) {
             .from(services)
             .where(eq(services.id, appt.serviceId))
             .then((r) => r[0]?.title || "Consultation"),
+      appt.patientId
+        ? db
+            .select({ token: patients.dashboardToken })
+            .from(patients)
+            .where(eq(patients.id, appt.patientId))
+            .then((r) => r[0]?.token || null)
+        : Promise.resolve(null),
     ]);
 
-    const values = buildValues(appt, serviceTitle, settings);
+    const values = buildValues(appt, serviceTitle, settings, dashboardToken);
     const emailTpl = templates.find((t) => t.channel === "email");
     const smsTpl = templates.find((t) => t.channel === "sms");
 
@@ -133,5 +141,102 @@ export async function dispatchLeadNotification(lead) {
     });
   } catch (err) {
     console.error(`[notify] quiz lead dispatch failed:`, err?.message || err);
+  }
+}
+
+/** Placeholder values for a medication reminder. Mirrors buildValues'
+ * conventions (dashboard_link, whatsapp_link) but sourced from the medication
+ * order + its patient rather than an appointment. */
+function buildMedicationValues(order, patient, settings, daysLeft) {
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
+  const wa = settings.contact_whatsapp
+    ? `https://wa.me/${String(settings.contact_whatsapp).replace(/\D/g, "")}`
+    : "";
+  return {
+    patient_name: patient.name || "",
+    medication_title: order.title || "",
+    days_left: daysLeft == null ? "" : String(daysLeft),
+    dashboard_link:
+      siteUrl && patient.dashboardToken
+        ? `${siteUrl}/patient/${patient.dashboardToken}`
+        : "",
+    clinic_phone: settings.contact_phone || "",
+    whatsapp_link: wa,
+    doctor_name: settings.payee_name || "Dr. Seema",
+  };
+}
+
+/**
+ * Medication reminder dispatcher (plan §7, medication flow). kind is
+ * 'medication_dose' (daily "take your medicine") or 'medication_refill'
+ * (one-time "supply runs out soon — reorder"). Looks up admin-editable
+ * templates by event = kind; when none exist it falls back to sensible
+ * hard-coded English defaults (mirrors dispatchLeadNotification's
+ * simpler-option pattern). SMS goes to patient.phone (sms.js adds +91), email
+ * only when the patient has one. NEVER throws — a reminder failure must not
+ * break the cron batch.
+ */
+export async function dispatchMedicationReminder(kind, order, patient) {
+  try {
+    const [templates, settings] = await Promise.all([
+      db
+        .select()
+        .from(messageTemplates)
+        .where(
+          and(eq(messageTemplates.event, kind), eq(messageTemplates.active, true)),
+        ),
+      getSettings([
+        "payee_name",
+        "contact_phone",
+        "contact_whatsapp",
+      ]),
+    ]);
+
+    const daysLeft = daysLeftForOrder(order);
+    const values = buildMedicationValues(order, patient, settings, daysLeft);
+    const emailTpl = templates.find((t) => t.channel === "email");
+    const smsTpl = templates.find((t) => t.channel === "sms");
+
+    // Hard-coded fallbacks when the doctor hasn't authored a template row.
+    const defaults =
+      kind === "medication_refill"
+        ? {
+            subject: `Reorder your ${order.title}`,
+            body:
+              `Hello ${values.patient_name}, your ${order.title} supply runs out ` +
+              `in about 3 days — reorder & pay from your dashboard: ${values.dashboard_link}`,
+          }
+        : {
+            subject: `Time for today's dose`,
+            body: `Hello ${values.patient_name}, it's time for today's dose of ${order.title}.`,
+          };
+
+    const emailSubject = emailTpl
+      ? renderTemplate(emailTpl.subject || defaults.subject, values)
+      : defaults.subject;
+    const emailBody = emailTpl
+      ? renderTemplate(emailTpl.body, values)
+      : defaults.body;
+    const smsBody = smsTpl ? renderTemplate(smsTpl.body, values) : defaults.body;
+
+    const results = await Promise.allSettled([
+      patient.email
+        ? sendEmail({ to: patient.email, subject: emailSubject, text: emailBody })
+        : Promise.resolve({ skipped: true }),
+      patient.phone
+        ? sendSms({ to: patient.phone, message: smsBody })
+        : Promise.resolve({ skipped: true }),
+    ]);
+
+    for (const [i, r] of results.entries()) {
+      if (r.status === "rejected") {
+        console.error(
+          `[notify] ${kind} channel ${["email", "sms"][i]} failed:`,
+          r.reason?.message || r.reason,
+        );
+      }
+    }
+  } catch (err) {
+    console.error(`[notify] ${kind} dispatch failed:`, err?.message || err);
   }
 }

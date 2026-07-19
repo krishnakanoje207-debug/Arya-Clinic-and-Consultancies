@@ -50,7 +50,7 @@ export default async function ConditionPage({ params }) {
   const locale = await getLocale();
   const t = await getTranslations();
   const [settings, allCases] = await Promise.all([
-    getSettings(["contact_phone", "contact_whatsapp"]),
+    getSettings(["contact_whatsapp"]),
     getPublishedCases(),
   ]);
 
@@ -91,9 +91,6 @@ export default async function ConditionPage({ params }) {
     after: c.afterImage,
   }));
 
-  const phone = settings?.contact_phone
-    ? String(settings.contact_phone).replace(/\s/g, "")
-    : null;
   const wa = settings?.contact_whatsapp
     ? `https://wa.me/${String(settings.contact_whatsapp).replace(/\D/g, "")}`
     : null;
@@ -339,11 +336,6 @@ export default async function ConditionPage({ params }) {
                 <Link href="/book" className="btn-primary">
                   {t("nav.book")}
                 </Link>
-                {phone ? (
-                  <a href={`tel:${phone}`} className="btn-ghost">
-                    {t("contact.call")}
-                  </a>
-                ) : null}
                 {wa ? (
                   <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-ghost">
                     {t("contact.whatsapp")}

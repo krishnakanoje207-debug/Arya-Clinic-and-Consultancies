@@ -73,6 +73,56 @@ export async function listAppointments(limit = 200) {
     .limit(limit);
 }
 
+/**
+ * Patient-management queue buckets (/admin/queue). One pass over confirmed +
+ * completed appointments, joined with service titles:
+ *   remaining  — confirmed, start still in the future (soonest first)
+ *   delayed    — confirmed, start already passed while a consult overran; they
+ *                are waiting in queue (longest-waiting first)
+ *   completed  — completed, newest first (cap 50)
+ */
+export async function getQueueBuckets() {
+  const now = nowUtc();
+  const [remaining, delayed, completed] = await Promise.all([
+    db
+      .select({ appt: appointments, serviceTitle: services.title })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .where(and(eq(appointments.status, "confirmed"), gte(appointments.startAt, now)))
+      .orderBy(appointments.startAt),
+    db
+      .select({ appt: appointments, serviceTitle: services.title })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .where(and(eq(appointments.status, "confirmed"), lt(appointments.startAt, now)))
+      .orderBy(appointments.startAt),
+    db
+      .select({ appt: appointments, serviceTitle: services.title })
+      .from(appointments)
+      .leftJoin(services, eq(appointments.serviceId, services.id))
+      .where(eq(appointments.status, "completed"))
+      .orderBy(sql`coalesce(${appointments.completedAt}, ${appointments.startAt}) desc`)
+      .limit(50),
+  ]);
+  return { remaining, delayed, completed };
+}
+
+/**
+ * Transition a confirmed appointment to completed, stamping completed_at.
+ * No auth/guard and no side effects (Sheet/Calendar) — those belong to the
+ * server action wrapper (src/app/admin/actions/appointments.js). Kept here so
+ * the transition is reusable and directly testable (scripts/e2e-admin-ops.mjs).
+ * Returns the updated row, or undefined when the row wasn't confirmed. */
+export async function completeAppointmentRow(id) {
+  const now = nowUtc();
+  const [row] = await db
+    .update(appointments)
+    .set({ status: "completed", completedAt: now, updatedAt: now })
+    .where(and(eq(appointments.id, Number(id)), eq(appointments.status, "confirmed")))
+    .returning();
+  return row;
+}
+
 /** Live database size + a soft percentage of Neon's 0.5 GB free tier, for
  * the storage meter / archival safety valve (plan §3.4). */
 export async function getStorageUsage() {

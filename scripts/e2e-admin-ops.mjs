@@ -1,0 +1,179 @@
+/**
+ * DB-level admin-ops E2E — drives the REAL library functions (not
+ * re-implementations) against the live local database:
+ *   filled_slots → slot grid marks it taken → direct booking rejected as
+ *   slot_taken → toggle off frees it (booking succeeds) → markAppointmentCompleted
+ *   transition sets completed_at → queue buckets classify remaining/delayed/
+ *   completed → sheets/gcal no-op without env → CSV column assembly → cleanup.
+ *
+ *   node --env-file=.env scripts/e2e-admin-ops.mjs
+ *
+ * Imports app modules through the "@/" alias via scripts/alias-loader.mjs
+ * (same pattern as e2e-medications.mjs), so the exact functions the UI calls
+ * are under test. Requires GOOGLE_* env vars to be UNSET (they no-op).
+ */
+import { register } from "node:module";
+import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
+
+register("./scripts/alias-loader.mjs", pathToFileURL("./").href);
+
+const { DateTime } = await import("luxon");
+const { eq } = await import("drizzle-orm");
+const { db } = await import("@/db");
+const { appointments, availabilityRules, filledSlots, patients, services } =
+  await import("@/db/schema");
+const { istWallToUtc } = await import("@/lib/time");
+const {
+  createBooking,
+  getAdminDaySlots,
+  overlapsFilledSlot,
+} = await import("@/lib/booking");
+const { getQueueBuckets, completeAppointmentRow } = await import("@/lib/admin");
+const {
+  appendCompletedAppointmentRow,
+  sheetsConfigured,
+  buildCompletedRow,
+  assembleCompletedRow,
+  COMPLETED_HEADERS,
+} = await import("@/lib/sheets");
+const { createAppointmentEvent, calendarConfigured } = await import("@/lib/gcal");
+
+const NORM = "9999000003"; // test-only phone (last 10 digits); rows deleted below
+const DATE = "2030-03-04"; // far-future IST date, never collides with real data
+
+function log(ok, msg) {
+  console.log(`${ok ? "✓" : "✗"} ${msg}`);
+  if (!ok) process.exitCode = 1;
+}
+
+let ruleId = null;
+let patientId = null;
+try {
+  const [svc] = await db.select().from(services);
+  log(!!svc, `picked service #${svc?.id} (${svc?.durationMinutes}m)`);
+  const len = svc.durationMinutes;
+
+  // A test patient (mirrors upsertPatientForBooking's insert).
+  const [pat] = await db
+    .insert(patients)
+    .values({ name: "E2E Admin", phone: NORM })
+    .onConflictDoUpdate({ target: patients.phone, set: { name: "E2E Admin" } })
+    .returning();
+  patientId = pat.id;
+
+  const start = istWallToUtc(DATE, "10:00");
+  const end = new Date(start.getTime() + len * 60000);
+
+  // --- Task 1: filled slot marks taken + blocks booking ---
+  await db.insert(filledSlots).values({ startAt: start, endAt: end });
+  log(await overlapsFilledSlot(start, end), "filled_slots row detected by overlapsFilledSlot");
+
+  const weekday = DateTime.fromISO(DATE, { zone: "Asia/Kolkata" }).weekday % 7;
+  const [rule] = await db
+    .insert(availabilityRules)
+    .values({
+      weekday,
+      startTime: "10:00",
+      endTime: "11:00",
+      slotLengthMinutes: 30,
+      mode: "online",
+      active: true,
+    })
+    .returning();
+  ruleId = rule.id;
+
+  const grid = await getAdminDaySlots({ serviceId: svc.id, mode: "online", dateStr: DATE });
+  const marked = grid.slots.find((s) => s.startAt === start.toISOString());
+  log(marked?.filled === true && marked?.booked === false, "admin day grid marks the slot filled (not booked)");
+
+  const blocked = await createBooking({
+    serviceId: svc.id,
+    mode: "online",
+    startAtIso: start.toISOString(),
+    patient: { name: "E2E Admin", phone: NORM },
+  });
+  log(blocked.ok === false && blocked.reason === "slot_taken", "createBooking on a filled slot rejected as slot_taken");
+
+  // --- toggle off (delete the filled row) frees the slot ---
+  await db.delete(filledSlots).where(eq(filledSlots.startAt, start));
+  log(!(await overlapsFilledSlot(start, end)), "after removing filled row, slot no longer taken");
+  const freed = await createBooking({
+    serviceId: svc.id,
+    mode: "online",
+    startAtIso: start.toISOString(),
+    patient: { name: "E2E Admin", phone: NORM },
+  });
+  log(freed.ok === true, "createBooking succeeds once the filled mark is removed");
+  if (freed.ok) {
+    await db.delete(appointments).where(eq(appointments.id, freed.appointment.id));
+  }
+
+  // --- Task 2: markAppointmentCompleted transition + bucket classification ---
+  const future = istWallToUtc(DATE, "12:00");
+  const past = istWallToUtc("2020-01-01", "10:00"); // confirmed but long past → delayed
+  const mkAppt = async (startAt) => {
+    const [row] = await db
+      .insert(appointments)
+      .values({
+        patientName: "E2E Admin",
+        patientPhone: NORM,
+        patientId,
+        serviceId: svc.id,
+        mode: "online",
+        startAt,
+        endAt: new Date(startAt.getTime() + len * 60000),
+        status: "confirmed",
+        amountInr: svc.feeInr,
+        manageToken: randomUUID(),
+      })
+      .returning();
+    return row;
+  };
+  const remainingAppt = await mkAppt(future);
+  const delayedAppt = await mkAppt(past);
+  const toComplete = await mkAppt(istWallToUtc(DATE, "12:30"));
+
+  const completed = await completeAppointmentRow(toComplete.id);
+  log(completed?.status === "completed" && completed?.completedAt != null, "completeAppointmentRow → completed + completed_at set");
+
+  const buckets = await getQueueBuckets();
+  const inBucket = (b, id) => b.some((r) => r.appt.id === id);
+  log(inBucket(buckets.remaining, remainingAppt.id), "remaining bucket contains the future confirmed appt");
+  log(inBucket(buckets.delayed, delayedAppt.id), "delayed bucket contains the past confirmed appt");
+  log(inBucket(buckets.completed, toComplete.id), "completed bucket contains the just-completed appt");
+  log(!inBucket(buckets.remaining, delayedAppt.id) && !inBucket(buckets.delayed, remainingAppt.id), "remaining/delayed do not cross-classify");
+
+  // --- Task 3/4: Google libs no-op without env, CSV columns assemble ---
+  // Force the unset state deterministically (local .env may have real creds).
+  const saved = {
+    GOOGLE_SERVICE_ACCOUNT_JSON: process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
+    GOOGLE_SHEET_ID: process.env.GOOGLE_SHEET_ID,
+    GOOGLE_CALENDAR_ID: process.env.GOOGLE_CALENDAR_ID,
+  };
+  delete process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  delete process.env.GOOGLE_SHEET_ID;
+  delete process.env.GOOGLE_CALENDAR_ID;
+  try {
+    log(sheetsConfigured() === false, "sheetsConfigured() false when GOOGLE_SHEET_ID unset");
+    const sheetRes = await appendCompletedAppointmentRow(toComplete.id);
+    log(sheetRes.ok === false && sheetRes.skipped === true, "appendCompletedAppointmentRow no-ops without throwing");
+    log(calendarConfigured() === false, "calendarConfigured() false when GOOGLE_CALENDAR_ID unset");
+    const calRes = await createAppointmentEvent(remainingAppt);
+    log(calRes.ok === false && calRes.skipped === true, "createAppointmentEvent no-ops without throwing");
+  } finally {
+    Object.assign(process.env, saved);
+  }
+
+  const row = buildCompletedRow({ patientName: "X", amountInr: 500, completedVisits: 2 });
+  log(row.length === COMPLETED_HEADERS.length, `buildCompletedRow width matches headers (${row.length}/${COMPLETED_HEADERS.length})`);
+  const assembled = await assembleCompletedRow(completed, "Test Service");
+  log(assembled.length === COMPLETED_HEADERS.length, "assembleCompletedRow width matches headers");
+} finally {
+  await db.delete(appointments).where(eq(appointments.patientPhone, NORM));
+  await db.delete(filledSlots).where(eq(filledSlots.startAt, istWallToUtc(DATE, "10:00")));
+  if (ruleId != null) await db.delete(availabilityRules).where(eq(availabilityRules.id, ruleId));
+  if (patientId != null) await db.delete(patients).where(eq(patients.id, patientId));
+  console.log("\ncleanup: removed test appointment/filled_slot/availability rule/patient rows");
+}
+process.exit(process.exitCode || 0);

@@ -1,4 +1,37 @@
 {
+  "medication": {
+    "title": "Your medication",
+    "empty": "No medication orders yet.",
+    "supplyDays": "{days}-day supply",
+    "chooseDuration": "Choose your supply duration",
+    "addressLabel": "Shipping address",
+    "addressPlaceholder": "Full address with PIN code",
+    "payTitle": "Pay for your medication",
+    "submitted": "Payment submitted — awaiting verification.",
+    "preparing": "Payment verified — your medicines are being prepared for dispatch.",
+    "shippedLabel": "Shipped",
+    "courierRef": "Courier reference",
+    "statusCancelled": "Cancelled",
+    "payCta": "Pay & order",
+    "payInstructions": "Pay via UPI for the duration you chose, then enter your transaction (UTR) reference below.",
+    "amountLabel": "Amount",
+    "durations": {
+      "15": "15 days",
+      "30": "1 month",
+      "60": "2 months"
+    },
+    "status": {
+      "pending_payment": "Awaiting payment",
+      "paid": "Payment verified",
+      "shipped": "Shipped",
+      "cancelled": "Cancelled"
+    },
+    "errors": {
+      "bad_duration": "That duration is no longer available. Please pick another option.",
+      "already_paid": "This order has already been paid for.",
+      "generic": "Something went wrong. Please check your details and try again."
+    }
+  },
   "nav": {
     "home": "Home",
     "about": "About",
@@ -9,8 +42,7 @@
     "faq": "FAQ",
     "faqs": "FAQs",
     "contact": "Contact",
-    "book": "Book Consultation",
-    "callNow": "Call Now"
+    "book": "Book Consultation"
   },
   "mega": {
     "conditionsTitle": "Conditions We Treat",
@@ -34,7 +66,6 @@
     }
   },
   "hero": {
-    "yearsSuffix": "Years — Homoeopathic Physician",
     "ctaBook": "Book Consultation",
     "ctaStories": "View Success Stories",
     "casesResolved": "Cases Resolved"
@@ -125,13 +156,12 @@
     "phoneSubmitting": "Sending…",
     "phoneSuccess": "Thank you. The doctor's team will contact you soon.",
     "phoneError": "Please enter a valid phone number.",
-    "phoneUnavailable": "We couldn't save that just now. Please call or message us and we'll be glad to help.",
-    "callFallback": "Call the clinic",
+    "phoneUnavailable": "We couldn't save that just now. Please message us on WhatsApp and we'll be glad to help.",
     "whatsappFallback": "Chat on WhatsApp",
     "disclaimer": "This self-assessment is for general awareness only. It is not a diagnosis or medical advice, and does not replace consultation with a qualified doctor. If you have severe or worrying symptoms, please seek medical care promptly."
   },
   "why": {
-    "title": "Why Choose ARYA",
+    "title": "Why Choose ARYA Clinic",
     "items": [
       {
         "title": "20+ Years' Experience",
@@ -153,13 +183,15 @@
     "chooseMode": "Consultation type",
     "modeOnline": "Online consultation",
     "modeClinic": "Clinic visit",
-    "pickDate": "Pick a date",
-    "pickSlot": "Pick a time",
+    "pickDate": "Consultation date",
+    "pickSlot": "Select time slot",
     "noSlots": "No slots available on this day",
     "unavailable": "Unavailable",
+    "booked": "Booked",
     "yourDetails": "Your details",
     "name": "Full name",
     "phone": "Phone number",
+    "problem": "Describe your problem (symptoms, since when)",
     "email": "Email (optional)",
     "continue": "Continue to payment",
     "holdNote": "Your slot is held for 15 minutes while you pay.",
@@ -182,7 +214,28 @@
     "rescheduleTitle": "Pick a new time",
     "confirmNewTime": "Confirm new time",
     "rescheduleDone": "Your appointment has been moved.",
-    "rescheduleFailed": "This booking can no longer be rescheduled online. Please contact the clinic."
+    "rescheduleFailed": "This booking can no longer be rescheduled online. Please contact the clinic.",
+    "viewDashboard": "View your patient dashboard"
+  },
+  "patientDashboard": {
+    "title": "Your patient dashboard",
+    "greeting": "Hello, {name}",
+    "upcomingHeading": "Upcoming appointments",
+    "pastHeading": "Past appointments",
+    "noUpcoming": "You have no upcoming appointments.",
+    "noPast": "No past appointments yet.",
+    "join": "Join video consultation",
+    "manage": "Manage / reschedule",
+    "yourNote": "You wrote:",
+    "bookFollowUp": "Book a follow-up consultation",
+    "privateNote": "This is your personal link. Please keep it private and do not share it.",
+    "status": {
+      "pending_payment": "Awaiting confirmation",
+      "confirmed": "Confirmed",
+      "completed": "Completed",
+      "cancelled": "Cancelled",
+      "expired": "Expired"
+    }
   },
   "intake": {
     "chiefComplaint": "Main complaint / reason for consultation",
@@ -195,7 +248,6 @@
   },
   "contact": {
     "whatsapp": "Chat on WhatsApp",
-    "call": "Call",
     "email": "Email",
     "hours": "Consultation Hours",
     "address": "Clinic Address",

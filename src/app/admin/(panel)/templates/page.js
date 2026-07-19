@@ -14,6 +14,8 @@ const EVENTS = [
   "rescheduled",
   "cancelled",
   "follow_up",
+  "medication_dose",
+  "medication_refill",
 ].map((e) => ({ value: e, label: e.replace(/_/g, " ") }));
 
 const CHANNELS = [
@@ -23,7 +25,14 @@ const CHANNELS = [
 
 const PLACEHOLDERS = [
   "{patient_name}", "{date}", "{time}", "{service}", "{amount}",
-  "{meet_link}", "{manage_link}", "{upi_id}", "{doctor_name}", "{whatsapp_link}",
+  "{meet_link}", "{manage_link}", "{dashboard_link}", "{upi_id}", "{doctor_name}", "{whatsapp_link}",
+];
+
+// Medication reminder events (medication dose / medication refill) draw from a
+// different value set — see buildMedicationValues in src/lib/notify/index.js.
+const MEDICATION_PLACEHOLDERS = [
+  "{patient_name}", "{medication_title}", "{days_left}", "{dashboard_link}",
+  "{clinic_phone}", "{whatsapp_link}", "{doctor_name}",
 ];
 
 export default async function AdminTemplates() {
@@ -52,6 +61,18 @@ export default async function AdminTemplates() {
           Subject applies to email only. Leave the Hindi body empty to use the
           English body for everyone.
         </p>
+        <p className="mt-3">
+          The <strong>medication dose</strong> (daily reminder while the supply
+          lasts) and <strong>medication refill</strong> (one-time, ~3 days
+          before it runs out) events use a different set of placeholders:
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {MEDICATION_PLACEHOLDERS.map((p) => (
+            <code key={p} className="bg-cream-deep px-2 py-0.5 rounded text-xs">
+              {p}
+            </code>
+          ))}
+        </div>
       </div>
 
       <EntityManager

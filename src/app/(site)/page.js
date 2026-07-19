@@ -69,6 +69,12 @@ export default async function HomePage() {
 
       <Hero profile={profile} locale={locale} bookFee={bookFee} />
       <Reveal>
+        <WhyArya />
+      </Reveal>
+      <Reveal>
+        <About profile={profile} locale={locale} />
+      </Reveal>
+      <Reveal>
         <Conditions />
       </Reveal>
       <Reveal>
@@ -79,9 +85,6 @@ export default async function HomePage() {
       </Reveal>
       <Reveal>
         <Services services={services} locale={locale} />
-      </Reveal>
-      <Reveal>
-        <WhyArya />
       </Reveal>
       <Reveal>
         <Testimonials testimonials={testimonials} locale={locale} />
@@ -96,9 +99,6 @@ export default async function HomePage() {
       ) : null}
       <Reveal>
         <Faq faqs={faqs} locale={locale} />
-      </Reveal>
-      <Reveal>
-        <About profile={profile} locale={locale} />
       </Reveal>
       <Reveal>
         <Contact settings={settings} />

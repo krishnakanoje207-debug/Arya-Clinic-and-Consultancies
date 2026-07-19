@@ -4,10 +4,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
 import { tokenSchema } from "@/lib/validation";
-import { HOLD_MINUTES, expireStaleHolds } from "@/lib/booking";
+import { HOLD_MINUTES, expireStaleHolds, overlapsFilledSlot } from "@/lib/booking";
 import { addMinutes, nowUtc } from "@/lib/time";
 import { dispatchNotification } from "@/lib/notify";
 import { getSettings } from "@/lib/settings";
+import { deleteAppointmentEvent, updateAppointmentEvent } from "@/lib/gcal";
 
 /** Confirmed appointments can't be changed online within the cutoff window
  * before their start time (default 4h) — the patient must contact the
@@ -41,7 +42,10 @@ export async function cancelByToken(token) {
     .set({ status: "cancelled", updatedAt: new Date() })
     .where(eq(appointments.id, appt.id))
     .returning();
-  if (row) await dispatchNotification("cancelled", row);
+  if (row) {
+    await dispatchNotification("cancelled", row);
+    await deleteAppointmentEvent(row);
+  }
   return { ok: true };
 }
 
@@ -77,6 +81,12 @@ export async function rescheduleByToken(token, startAtIso) {
   if (await withinCutoff(appt)) return { ok: false, reason: "too_late" };
 
   const endAt = addMinutes(startAt, duration || 30);
+
+  // Can't move onto a slot the doctor marked as booked (deliberate scarcity).
+  if (await overlapsFilledSlot(startAt, endAt)) {
+    return { ok: false, reason: "slot_taken" };
+  }
+
   await expireStaleHolds();
 
   try {
@@ -95,7 +105,11 @@ export async function rescheduleByToken(token, startAtIso) {
       })
       .where(eq(appointments.id, appt.id))
       .returning();
-    if (updated) await dispatchNotification("rescheduled", updated);
+    if (updated) {
+      await dispatchNotification("rescheduled", updated);
+      // Update (or create-if-confirmed-and-missing) the calendar event.
+      await updateAppointmentEvent(updated);
+    }
     return { ok: true };
   } catch (err) {
     if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };

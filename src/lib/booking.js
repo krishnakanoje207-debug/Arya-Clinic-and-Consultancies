@@ -1,13 +1,15 @@
 import { randomUUID } from "crypto";
-import { and, eq, gte, lte, or, sql } from "drizzle-orm";
+import { and, eq, gt, gte, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import {
   appointments,
   availabilityRules,
+  filledSlots,
   services,
   slotOverrides,
 } from "@/db/schema";
 import { IST_ZONE, addMinutes, istToday, istWeekday, nowUtc } from "@/lib/time";
+import { upsertPatientForBooking } from "@/lib/patients";
 import { DateTime } from "luxon";
 
 const HOLD_MINUTES = 15;
@@ -94,11 +96,38 @@ async function loadActiveRanges(fromUtc, toUtc) {
   ]);
 }
 
+/** Admin-marked "display as booked" ranges overlapping [fromUtc, toUtc]. These
+ * make a slot show as taken (deliberate scarcity) without a real booking. */
+async function loadFilledRanges(fromUtc, toUtc) {
+  const rows = await db
+    .select({ startAt: filledSlots.startAt, endAt: filledSlots.endAt })
+    .from(filledSlots)
+    .where(and(gte(filledSlots.startAt, fromUtc), lte(filledSlots.startAt, toUtc)));
+  return rows.map((r) => [
+    new Date(r.startAt).getTime(),
+    new Date(r.endAt).getTime(),
+  ]);
+}
+
+/** True when [startAt, endAt) overlaps any admin-marked filled_slots row. Used
+ * server-side so a crafted POST can't book a slot the doctor marked as booked.
+ * Half-open overlap: filled.start < endAt AND filled.end > startAt. */
+export async function overlapsFilledSlot(startAt, endAt) {
+  const [row] = await db
+    .select({ id: filledSlots.id })
+    .from(filledSlots)
+    .where(and(lt(filledSlots.startAt, endAt), gt(filledSlots.endAt, startAt)))
+    .limit(1);
+  return Boolean(row);
+}
+
 /**
  * Build the calendar for a service: for each of the next `days` IST days,
- * derive bookable slots from availability_rules minus slot_overrides minus
- * active appointments. Booked/held/past slots are returned with
- * available:false so the UI can grey them out ("Unavailable").
+ * derive bookable slots from availability_rules minus slot_overrides. Booked
+ * (real or admin-marked filled), held and past slots are returned with
+ * available:false; taken:true additionally flags real/filled bookings so the
+ * UI can render them as greyed "Booked" chips (past slots stay unavailable but
+ * not "Booked").
  */
 export async function getServiceCalendar(serviceId, {
   mode,
@@ -148,7 +177,11 @@ export async function getServiceCalendar(serviceId, {
 
   const fromUtc = istMinutesToUtc(dateStrs[0], 0);
   const toUtc = istMinutesToUtc(dateStrs[dateStrs.length - 1], 24 * 60);
-  const activeRanges = await loadActiveRanges(fromUtc, toUtc);
+  const [activeRanges, filledRanges] = await Promise.all([
+    loadActiveRanges(fromUtc, toUtc),
+    loadFilledRanges(fromUtc, toUtc),
+  ]);
+  const takenRanges = [...activeRanges, ...filledRanges];
   const now = nowUtc().getTime();
 
   const out = [];
@@ -188,16 +221,22 @@ export async function getServiceCalendar(serviceId, {
           const sMs = startUtc.getTime();
           const eMs = endUtc.getTime();
           const isPast = sMs <= now;
-          const isTaken = activeRanges.some(
+          const isTaken = takenRanges.some(
             ([as, ae]) => sMs < ae && as < eMs,
           );
           slots.push({
             startAt: startUtc.toISOString(),
             endAt: endUtc.toISOString(),
-            label: DateTime.fromJSDate(startUtc)
-              .setZone(IST_ZONE)
-              .toFormat("hh:mm a"),
+            label:
+              DateTime.fromJSDate(startUtc)
+                .setZone(IST_ZONE)
+                .toFormat("hh:mm a") +
+              " – " +
+              DateTime.fromJSDate(endUtc)
+                .setZone(IST_ZONE)
+                .toFormat("hh:mm a"),
             available: !isPast && !isTaken,
+            taken: isTaken,
           });
         }
       }
@@ -207,6 +246,93 @@ export async function getServiceCalendar(serviceId, {
   }
 
   return { service, mode: targetMode, days: out };
+}
+
+/**
+ * Generate one IST day's slot grid for the admin "Filled slots" manager. Same
+ * derivation as getServiceCalendar for a single date, but each slot carries its
+ * exact state: booked (overlaps a real active appointment — not toggleable) or
+ * filled (overlaps an admin-marked filled_slots row — toggleable off). Past and
+ * whole-day-blocked handling mirrors the public calendar.
+ */
+export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
+  const [service] = await db
+    .select()
+    .from(services)
+    .where(and(eq(services.id, Number(serviceId)), eq(services.active, true)));
+  if (!service) return { service: null, slots: [] };
+
+  const targetMode = mode || (service.mode === "clinic" ? "clinic" : "online");
+  const slotLen = service.durationMinutes;
+  const wd = istWeekday(dateStr);
+
+  const rules = await db
+    .select()
+    .from(availabilityRules)
+    .where(
+      and(
+        eq(availabilityRules.active, true),
+        eq(availabilityRules.mode, targetMode),
+      ),
+    );
+  const dayOverrides = await db
+    .select()
+    .from(slotOverrides)
+    .where(
+      and(
+        eq(slotOverrides.onDate, dateStr),
+        or(eq(slotOverrides.mode, targetMode), sql`${slotOverrides.mode} is null`),
+      ),
+    );
+
+  const fullBlock = dayOverrides.some((o) => o.kind === "blocked" && !o.startTime);
+  if (fullBlock) return { service, mode: targetMode, slots: [] };
+
+  const blockedRanges = dayOverrides
+    .filter((o) => o.kind === "blocked" && o.startTime && o.endTime)
+    .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]);
+  const windows = [
+    ...rules
+      .filter((r) => r.weekday === wd)
+      .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
+    ...dayOverrides
+      .filter((o) => o.kind === "extra" && o.startTime && o.endTime)
+      .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]),
+  ];
+
+  const fromUtc = istMinutesToUtc(dateStr, 0);
+  const toUtc = istMinutesToUtc(dateStr, 24 * 60);
+  const [activeRanges, filledRanges] = await Promise.all([
+    loadActiveRanges(fromUtc, toUtc),
+    loadFilledRanges(fromUtc, toUtc),
+  ]);
+  const now = nowUtc().getTime();
+
+  const slots = [];
+  for (const [ws, we] of windows) {
+    for (const [ps, pe] of subtractRanges(ws, we, blockedRanges)) {
+      for (let s = ps; s + slotLen <= pe; s += slotLen) {
+        const startUtc = istMinutesToUtc(dateStr, s);
+        const endUtc = istMinutesToUtc(dateStr, s + slotLen);
+        const sMs = startUtc.getTime();
+        const eMs = endUtc.getTime();
+        const overlaps = (r) => r.some(([as, ae]) => sMs < ae && as < eMs);
+        slots.push({
+          startAt: startUtc.toISOString(),
+          endAt: endUtc.toISOString(),
+          label:
+            DateTime.fromJSDate(startUtc).setZone(IST_ZONE).toFormat("hh:mm a") +
+            " – " +
+            DateTime.fromJSDate(endUtc).setZone(IST_ZONE).toFormat("hh:mm a"),
+          past: sMs <= now,
+          booked: overlaps(activeRanges),
+          filled: overlaps(filledRanges),
+        });
+      }
+    }
+  }
+  slots.sort((a, b) => a.startAt.localeCompare(b.startAt));
+  return { service, mode: targetMode, slots };
 }
 
 /**
@@ -238,6 +364,13 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
     return { ok: false, reason: "in_past" };
   }
   const endAt = addMinutes(startAt, service.durationMinutes);
+
+  // A slot the doctor marked as booked (deliberate scarcity) can't be booked,
+  // even by a crafted POST that never rendered it as "Booked".
+  if (await overlapsFilledSlot(startAt, endAt)) {
+    return { ok: false, reason: "slot_taken" };
+  }
+
   const holdExpiresAt = addMinutes(nowUtc(), HOLD_MINUTES);
   const manageToken = randomUUID();
 
@@ -258,6 +391,12 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
     );
   if (held >= 2) return { ok: false, reason: "too_many_holds" };
 
+  const patientRow = await upsertPatientForBooking({
+    name: patient.name,
+    phone: patient.phone,
+    email: patient.email,
+  });
+
   try {
     const [row] = await db
       .insert(appointments)
@@ -265,6 +404,8 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
         patientName: patient.name,
         patientPhone: patient.phone,
         patientEmail: patient.email || null,
+        problemNote: patient.note || null,
+        patientId: patientRow.id,
         serviceId: service.id,
         mode: bookingMode,
         startAt,
@@ -275,7 +416,7 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
         manageToken,
       })
       .returning();
-    return { ok: true, appointment: row };
+    return { ok: true, appointment: row, dashboardToken: patientRow.dashboardToken };
   } catch (err) {
     // 23P01 = exclusion_violation (slot overlaps an active booking).
     if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };

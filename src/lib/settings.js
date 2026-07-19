@@ -23,7 +23,7 @@ export const SETTINGS_DEFAULTS = {
   maps_embed_url: "",
   notice_banner: "",
   contact_phone: "+91 89997 58063",
-  contact_whatsapp: "918999758063",
+  contact_whatsapp: "918605015122",
   contact_email: "",
   google_reviews_url: "", // Google Business review link; badge hidden when empty
   // Full-viewport photo behind the hero + About Me sections on the homepage

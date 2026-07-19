@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import {
   createBookingAction,
@@ -25,11 +25,13 @@ export default function BookingFlow({
   clinicMode,
   preselectServiceId,
   reschedule = null,
+  prefill = null,
 }) {
   const t = useTranslations();
   const [pending, startTransition] = useTransition();
 
-  // Normal flow: select → details → payment → pending.
+  // Normal flow: select (details form appears inline once a slot is
+  // picked) → payment → pending.
   // Reschedule flow (valid manage token): select → done (same row moves;
   // no new details or payment are ever collected).
   const [step, setStep] = useState("select");
@@ -38,7 +40,13 @@ export default function BookingFlow({
   const [calendar, setCalendar] = useState(null);
   const [activeDate, setActiveDate] = useState(null);
   const [slot, setSlot] = useState(null);
-  const [patient, setPatient] = useState({ name: "", phone: "", email: "" });
+  const [patient, setPatient] = useState({
+    name: prefill?.name || "",
+    phone: prefill?.phone || "",
+    email: prefill?.email || "",
+    note: "",
+  });
+  const detailsRef = useRef(null);
   const [booking, setBooking] = useState(null);
   const [upi, setUpi] = useState(null);
   const [utr, setUtr] = useState("");
@@ -71,30 +79,34 @@ export default function BookingFlow({
     });
   }, [serviceId, effectiveMode]);
 
-  function proceedToDetails() {
+  // Reschedule: the slot picker's button moves the existing appointment.
+  function confirmReschedule() {
     setError(null);
     if (!slot) {
       setError(t("booking.pickSlot"));
       return;
     }
-    if (reschedule) {
-      startTransition(async () => {
-        const res = await rescheduleByToken(reschedule.token, slot.startAt);
-        if (!res.ok) {
-          setError(
-            res.reason === "slot_taken"
-              ? t("booking.slotTaken")
-              : t("booking.rescheduleFailed"),
-          );
-          setSlot(null);
-          return;
-        }
-        setStep("rescheduled");
-      });
-      return;
-    }
-    setStep("details");
+    startTransition(async () => {
+      const res = await rescheduleByToken(reschedule.token, slot.startAt);
+      if (!res.ok) {
+        setError(
+          res.reason === "slot_taken"
+            ? t("booking.slotTaken")
+            : t("booking.rescheduleFailed"),
+        );
+        setSlot(null);
+        return;
+      }
+      setStep("rescheduled");
+    });
   }
+
+  // Bring the inline details form into view as soon as a slot is picked.
+  useEffect(() => {
+    if (slot && !reschedule) {
+      detailsRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }, [slot, reschedule]);
 
   function submitBooking(e) {
     e.preventDefault();
@@ -118,7 +130,7 @@ export default function BookingFlow({
               ? t("booking.tooManyHolds")
               : t("common.required");
         setError(msg);
-        if (res.reason === "slot_taken") setStep("select");
+        if (res.reason === "slot_taken") setSlot(null);
         return;
       }
       setBooking(res.booking);
@@ -163,7 +175,7 @@ export default function BookingFlow({
         </div>
       )}
 
-      {(step === "select" || step === "details") && (
+      {step === "select" && (
         <div className="card-warm p-6 space-y-6">
           {/* Service (locked during reschedule — same appointment moves) */}
           <div>
@@ -173,7 +185,7 @@ export default function BookingFlow({
             <select
               value={serviceId || ""}
               onChange={(e) => setServiceId(Number(e.target.value))}
-              disabled={step === "details" || Boolean(reschedule)}
+              disabled={Boolean(reschedule)}
               className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
             >
               {services.map((s) => (
@@ -196,7 +208,6 @@ export default function BookingFlow({
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    disabled={step === "details"}
                     className={`px-4 py-2 rounded-full border text-sm ${
                       effectiveMode === m
                         ? "bg-sage text-white border-sage"
@@ -256,23 +267,31 @@ export default function BookingFlow({
                   {t("booking.pickSlot")}
                 </span>
                 {activeDay && activeDay.slots.length ? (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {activeDay.slots.map((s) => (
                       <button
                         key={s.startAt}
                         type="button"
                         disabled={!s.available}
                         onClick={() => setSlot(s)}
-                        title={s.available ? "" : t("booking.unavailable")}
+                        title={
+                          s.available
+                            ? ""
+                            : s.taken
+                              ? t("booking.booked")
+                              : t("booking.unavailable")
+                        }
                         className={`px-2 py-2 rounded-lg border text-sm ${
                           slot?.startAt === s.startAt
                             ? "bg-terracotta text-white border-terracotta"
                             : s.available
                               ? "border-[var(--border)] text-ink hover:border-sage"
-                              : "border-[var(--border)] text-ink-soft/40 line-through cursor-not-allowed"
+                              : s.taken
+                                ? "border-[var(--border)] bg-cream-deep text-ink-soft/60 cursor-not-allowed"
+                                : "border-[var(--border)] text-ink-soft/40 line-through cursor-not-allowed"
                         }`}
                       >
-                        {s.label}
+                        {s.taken ? t("booking.booked") : s.label}
                       </button>
                     ))}
                   </div>
@@ -281,65 +300,92 @@ export default function BookingFlow({
                 )}
               </div>
 
-              {error && <p className="text-sm text-terracotta-deep">{error}</p>}
-              <button
-                type="button"
-                onClick={proceedToDetails}
-                disabled={!slot || pending}
-                className="btn-primary"
-              >
-                {pending
-                  ? t("common.loading")
-                  : reschedule
-                    ? t("booking.confirmNewTime")
-                    : t("booking.continue")}
-              </button>
+              {reschedule ? (
+                <>
+                  {error && (
+                    <p className="text-sm text-terracotta-deep">{error}</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={confirmReschedule}
+                    disabled={!slot || pending}
+                    className="btn-primary"
+                  >
+                    {pending ? t("common.loading") : t("booking.confirmNewTime")}
+                  </button>
+                </>
+              ) : slot ? (
+                /* Details form appears automatically once a slot is picked;
+                   the slot grid stays visible so the choice can change. */
+                <form
+                  ref={detailsRef}
+                  onSubmit={submitBooking}
+                  className="space-y-3 border-t border-[var(--border)] pt-4 scroll-mt-24"
+                >
+                  <p className="font-semibold text-ink">
+                    {t("booking.yourDetails")}
+                  </p>
+                  <p className="text-sm text-ink-soft">
+                    {formatDayLabel(activeDate)} · {slot?.label} ·{" "}
+                    {t(
+                      effectiveMode === "online"
+                        ? "booking.modeOnline"
+                        : "booking.modeClinic",
+                    )}
+                  </p>
+                  <input
+                    required
+                    placeholder={t("booking.name")}
+                    value={patient.name}
+                    onChange={(e) =>
+                      setPatient({ ...patient, name: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
+                  />
+                  <input
+                    required
+                    placeholder={t("booking.phone")}
+                    value={patient.phone}
+                    onChange={(e) =>
+                      setPatient({ ...patient, phone: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
+                  />
+                  <textarea
+                    required
+                    rows={3}
+                    placeholder={t("booking.problem")}
+                    value={patient.note}
+                    onChange={(e) =>
+                      setPatient({ ...patient, note: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
+                  />
+                  <input
+                    type="email"
+                    placeholder={t("booking.email")}
+                    value={patient.email}
+                    onChange={(e) =>
+                      setPatient({ ...patient, email: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
+                  />
+                  <p className="text-xs text-ink-soft">{t("booking.holdNote")}</p>
+                  {error && (
+                    <p className="text-sm text-terracotta-deep">{error}</p>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={pending}
+                    className="btn-primary w-full"
+                  >
+                    {pending ? t("common.loading") : t("booking.continue")}
+                  </button>
+                </form>
+              ) : null}
             </>
           )}
 
-          {step === "details" && (
-            <form onSubmit={submitBooking} className="space-y-3">
-              <p className="text-sm text-ink-soft">
-                {formatDayLabel(activeDate)} · {slot?.label} ·{" "}
-                {t(effectiveMode === "online" ? "booking.modeOnline" : "booking.modeClinic")}
-              </p>
-              <input
-                required
-                placeholder={t("booking.name")}
-                value={patient.name}
-                onChange={(e) => setPatient({ ...patient, name: e.target.value })}
-                className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
-              />
-              <input
-                required
-                placeholder={t("booking.phone")}
-                value={patient.phone}
-                onChange={(e) => setPatient({ ...patient, phone: e.target.value })}
-                className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
-              />
-              <input
-                type="email"
-                placeholder={t("booking.email")}
-                value={patient.email}
-                onChange={(e) => setPatient({ ...patient, email: e.target.value })}
-                className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
-              />
-              <p className="text-xs text-ink-soft">{t("booking.holdNote")}</p>
-              {error && <p className="text-sm text-terracotta-deep">{error}</p>}
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setStep("select")}
-                  className="btn-ghost"
-                >
-                  ←
-                </button>
-                <button type="submit" disabled={pending} className="btn-primary flex-1">
-                  {pending ? t("common.loading") : t("booking.continue")}
-                </button>
-              </div>
-            </form>
-          )}
         </div>
       )}
 
@@ -359,7 +405,11 @@ export default function BookingFlow({
       )}
 
       {step === "pending" && (
-        <PendingWithIntake t={t} manageToken={booking.manageToken} />
+        <PendingWithIntake
+          t={t}
+          manageToken={booking.manageToken}
+          dashboardToken={booking.dashboardToken}
+        />
       )}
     </div>
   );
@@ -427,7 +477,7 @@ function PaymentWindow({ t, upi, amount, utr, setUtr, onSubmit, pending, error, 
   );
 }
 
-function PendingWithIntake({ t, manageToken }) {
+function PendingWithIntake({ t, manageToken, dashboardToken }) {
   const [done, setDone] = useState(false);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -460,6 +510,15 @@ function PendingWithIntake({ t, manageToken }) {
         </h2>
         <p className="text-sm text-ink-soft mt-1">{t("booking.pendingBody")}</p>
       </div>
+
+      {dashboardToken && (
+        <a
+          href={`/patient/${dashboardToken}`}
+          className="btn-primary inline-block"
+        >
+          {t("booking.viewDashboard")}
+        </a>
+      )}
 
       {!done ? (
         <form onSubmit={save} className="space-y-3 border-t border-[var(--border)] pt-4">

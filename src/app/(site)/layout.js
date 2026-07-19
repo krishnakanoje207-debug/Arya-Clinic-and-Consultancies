@@ -7,7 +7,6 @@ import { getSettings } from "@/lib/settings";
 export default async function SiteLayout({ children }) {
   const s = await getSettings([
     "notice_banner",
-    "contact_phone",
     "contact_whatsapp",
   ]).catch(() => ({}));
   return (
@@ -22,7 +21,7 @@ export default async function SiteLayout({ children }) {
       <SiteFooter />
       {/* Spacer so the mobile sticky bar never covers footer content. */}
       <div className="h-16 md:hidden" aria-hidden="true" />
-      <StickyContact phone={s.contact_phone} whatsapp={s.contact_whatsapp} />
+      <StickyContact whatsapp={s.contact_whatsapp} />
     </>
   );
 }

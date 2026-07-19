@@ -56,8 +56,8 @@ const DEFAULT_PROFILE = {
   yearsExperience: 20,
   stats: [
     { label: "Years Experience", label_hi: "वर्षों का अनुभव", value: "20+" },
-    { label: "Cities Served", label_hi: "सेवित शहर", value: "Nagpur · Pune" },
-    { label: "Online", label_hi: "ऑनलाइन", value: "Worldwide" },
+    { label: "Severe Cases Treated", label_hi: "इलाज किए गए गंभीर मामले", value: "100+" },
+    { label: "In-Clinic & Online Worldwide", label_hi: "क्लिनिक और ऑनलाइन विश्वभर", value: "Nagpur · Pune" },
   ],
   heroImage: "/brand/dr-seema.jpeg",
   aboutImage: "/brand/dr-seema.jpeg",

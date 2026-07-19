@@ -126,7 +126,6 @@ function ResultScreen({ quiz, answers, settings, onRestart }) {
   const wa = settings?.whatsapp
     ? `https://wa.me/${String(settings.whatsapp).replace(/\D/g, "")}`
     : null;
-  const tel = settings?.phone ? String(settings.phone).replace(/\s/g, "") : null;
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -175,11 +174,6 @@ function ResultScreen({ quiz, answers, settings, onRestart }) {
           <div className="text-sm text-ink-soft">
             <p>{t("phoneUnavailable")}</p>
             <div className="mt-3 flex flex-wrap gap-3">
-              {tel ? (
-                <a href={`tel:${tel}`} className="btn-ghost">
-                  {t("callFallback")}
-                </a>
-              ) : null}
               {wa ? (
                 <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-ghost">
                   {t("whatsappFallback")}

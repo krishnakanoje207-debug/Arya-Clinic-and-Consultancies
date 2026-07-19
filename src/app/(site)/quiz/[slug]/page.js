@@ -28,7 +28,7 @@ export default async function QuizPage({ params }) {
 
   const locale = await getLocale();
   const t = await getTranslations("quiz");
-  const settings = await getSettings(["contact_phone", "contact_whatsapp"]);
+  const settings = await getSettings(["contact_whatsapp"]);
   const localized = localizeQuiz(quiz, locale);
 
   return (
@@ -60,7 +60,6 @@ export default async function QuizPage({ params }) {
           <QuizRunner
             quiz={localized}
             settings={{
-              phone: settings?.contact_phone || null,
               whatsapp: settings?.contact_whatsapp || null,
             }}
           />

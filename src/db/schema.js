@@ -123,6 +123,25 @@ export const slotOverrides = pgTable("slot_overrides", {
   note: text("note"),
 });
 
+/** Persistent patient record: one row per person, keyed by their NORMALIZED
+ * phone (last 10 digits — see src/lib/patients.js). Ties a patient's
+ * appointments together so they can view their whole history via a private
+ * dashboard_token link. Upserted on every booking. */
+export const patients = pgTable("patients", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  phone: text("phone").notNull(), // normalized form (last 10 digits)
+  email: text("email"),
+  dashboardToken: text("dashboard_token").notNull().unique(),
+  address: text("address"), // saved shipping address, reused across medication orders
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /**
  * Double-booking is prevented by a Postgres EXCLUSION constraint
  * (btree_gist) on tstzrange(start_at, end_at), applied to rows whose
@@ -138,6 +157,8 @@ export const appointments = pgTable("appointments", {
   patientName: text("patient_name").notNull(),
   patientPhone: text("patient_phone").notNull(),
   patientEmail: text("patient_email"),
+  problemNote: text("problem_note"), // patient's own description at booking
+  patientId: integer("patient_id").references(() => patients.id),
   serviceId: integer("service_id")
     .notNull()
     .references(() => services.id),
@@ -155,10 +176,26 @@ export const appointments = pgTable("appointments", {
   manageToken: text("manage_token").notNull().unique(), // self-service reschedule/cancel
   reminderSent: boolean("reminder_sent").notNull().default(false),
   doctorNotes: text("doctor_notes"), // private consultation record (CCH guideline)
+  googleEventId: text("google_event_id"), // synced Google Calendar event id (best-effort)
+  completedAt: timestamp("completed_at", { withTimezone: true }), // set when doctor marks completed
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+/** Admin-marked "display as booked" time ranges (deliberate scarcity — the
+ * doctor's own request). Public slot generation renders an overlapping slot as
+ * a greyed "Booked" chip and the server rejects bookings/reschedules that
+ * overlap one. Display-only: intentionally NOT part of the appointments
+ * EXCLUSION constraint. See drizzle/0009_admin_ops.sql. */
+export const filledSlots = pgTable("filled_slots", {
+  id: serial("id").primaryKey(),
+  startAt: timestamp("start_at", { withTimezone: true }).notNull(), // UTC
+  endAt: timestamp("end_at", { withTimezone: true }).notNull(), // UTC
+  createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
@@ -302,10 +339,42 @@ export const quizLeads = pgTable("quiz_leads", {
  * {meet_link} {manage_link} {upi_id} {doctor_name} */
 export const messageTemplates = pgTable("message_templates", {
   id: serial("id").primaryKey(),
-  event: text("event").notNull(), // booking_received, payment_received, confirmed, reminder, rescheduled, cancelled, follow_up
+  event: text("event").notNull(), // booking_received, payment_received, confirmed, reminder, rescheduled, cancelled, follow_up, medication_dose, medication_refill
   channel: text("channel").notNull(), // email | sms
   subject: text("subject"), // email only
   body: text("body").notNull(),
   bodyHi: text("body_hi"),
   active: boolean("active").notNull().default(true),
+});
+
+/** Medicines the doctor parcels herself after a consultation. She creates an
+ * order per patient, pricing each duration she medically allows; the patient
+ * picks one enabled duration, pays via UPI (manual UTR verification, same as
+ * consultations), and a daily cron sends dose reminders + a one-time refill
+ * prompt ~3 days before the supply runs out. options is the enabled-durations
+ * price list: [{ days: 15|30|60, amountInr: int }]. */
+export const medicationOrders = pgTable("medication_orders", {
+  id: serial("id").primaryKey(),
+  patientId: integer("patient_id")
+    .notNull()
+    .references(() => patients.id),
+  appointmentId: integer("appointment_id").references(() => appointments.id),
+  title: text("title").notNull(), // what the medicines are (patient-visible)
+  options: jsonb("options").notNull(), // [{ days, amountInr }] — only durations the doctor enabled
+  chosenDurationDays: integer("chosen_duration_days"), // set when patient picks
+  amountInr: integer("amount_inr"), // set when patient picks (from the matching option)
+  status: text("status").notNull().default("pending_payment"), // pending_payment | paid | shipped | cancelled
+  address: text("address"), // shipping address for this order
+  utr: text("utr"), // UPI transaction reference entered by patient
+  utrSubmittedAt: timestamp("utr_submitted_at", { withTimezone: true }),
+  paidAt: timestamp("paid_at", { withTimezone: true }),
+  shippedAt: timestamp("shipped_at", { withTimezone: true }),
+  courierRef: text("courier_ref"),
+  refillReminderSent: boolean("refill_reminder_sent").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
 });

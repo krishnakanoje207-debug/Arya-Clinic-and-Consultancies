@@ -6,7 +6,13 @@ import { db } from "@/db";
 import { appointments } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { expireStaleHolds } from "@/lib/booking";
+import { completeAppointmentRow } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
+import { appendCompletedAppointmentRow } from "@/lib/sheets";
+import {
+  createAppointmentEvent,
+  deleteAppointmentEvent,
+} from "@/lib/gcal";
 
 async function guard() {
   const s = await requireAdmin();
@@ -45,6 +51,8 @@ export async function confirmAppointment(id, meetingLink) {
   }
   if (row) {
     await dispatchNotification("confirmed", row, { includeIcs: true });
+    // Best-effort Google Calendar event (no-op when unconfigured, never throws).
+    await createAppointmentEvent(row);
   }
   revalidatePath("/admin/appointments");
   revalidatePath("/admin");
@@ -58,18 +66,31 @@ export async function cancelAppointment(id) {
     .set({ status: "cancelled", needsReview: false, updatedAt: new Date() })
     .where(eq(appointments.id, Number(id)))
     .returning();
-  if (row) await dispatchNotification("cancelled", row);
+  if (row) {
+    await dispatchNotification("cancelled", row);
+    await deleteAppointmentEvent(row);
+  }
   revalidatePath("/admin/appointments");
+  revalidatePath("/admin/queue");
   return { ok: true };
 }
 
-export async function completeAppointment(id) {
+/**
+ * Mark a confirmed consult completed: sets completed_at and, best-effort,
+ * appends the full row to the doctor's Google Sheet. The calendar event is
+ * intentionally LEFT in place (the consult happened). Both Google calls no-op
+ * when unconfigured and never throw.
+ */
+export async function markAppointmentCompleted(id) {
   await guard();
-  await db
-    .update(appointments)
-    .set({ status: "completed", updatedAt: new Date() })
-    .where(eq(appointments.id, Number(id)));
+  const row = await completeAppointmentRow(id);
+  if (row) {
+    await appendCompletedAppointmentRow(row.id);
+  }
   revalidatePath("/admin/appointments");
+  revalidatePath("/admin/queue");
+  revalidatePath("/admin");
+  return { ok: true };
 }
 
 /** Clear the "paid but hold expired" flag once handled. */

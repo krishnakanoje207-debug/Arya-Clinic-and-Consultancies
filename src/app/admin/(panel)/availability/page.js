@@ -1,7 +1,8 @@
 import { db } from "@/db";
-import { availabilityRules, slotOverrides } from "@/db/schema";
+import { availabilityRules, services, slotOverrides } from "@/db/schema";
 import EntityManager from "@/components/admin/EntityManager";
 import OverridesManager from "@/components/admin/OverridesManager";
+import FilledSlotsManager from "@/components/admin/FilledSlotsManager";
 import { deleteRule, upsertRule } from "@/app/admin/actions/content";
 
 export const dynamic = "force-dynamic";
@@ -18,9 +19,14 @@ const WEEKDAYS = [
 const WD_LABEL = Object.fromEntries(WEEKDAYS.map((w) => [Number(w.value), w.label]));
 
 export default async function AdminAvailability() {
-  const [rules, overrides] = await Promise.all([
+  const [rules, overrides, serviceRows] = await Promise.all([
     db.select().from(availabilityRules).orderBy(availabilityRules.weekday).catch(() => []),
     db.select().from(slotOverrides).orderBy(slotOverrides.onDate).catch(() => []),
+    db
+      .select({ id: services.id, title: services.title, mode: services.mode, active: services.active })
+      .from(services)
+      .orderBy(services.sortOrder)
+      .catch(() => []),
   ]);
 
   return (
@@ -61,6 +67,8 @@ export default async function AdminAvailability() {
       />
 
       <OverridesManager overrides={overrides} />
+
+      <FilledSlotsManager services={serviceRows} />
     </div>
   );
 }

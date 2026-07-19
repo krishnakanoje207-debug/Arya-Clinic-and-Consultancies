@@ -61,6 +61,9 @@ async function main() {
   const ROUTES = [
     "/admin",
     "/admin/appointments",
+    "/admin/queue",
+    "/admin/patients",
+    "/admin/medications",
     "/admin/availability",
     "/admin/content",
     "/admin/research",

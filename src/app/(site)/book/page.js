@@ -1,7 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { appointments } from "@/db/schema";
+import { appointments, patients } from "@/db/schema";
 import { getServices, localized } from "@/lib/content";
 import { getSettings, isClinicMode } from "@/lib/settings";
 import { tokenSchema } from "@/lib/validation";
@@ -30,6 +30,26 @@ export default async function BookPage({ searchParams }) {
   }));
 
   const preselect = Number(sp?.service) || null;
+
+  // Prefill mode: a valid patient dashboard token (?p=) pre-populates the
+  // details form from that patient's record. Fields stay fully editable.
+  let prefill = null;
+  const ptok = tokenSchema.safeParse(sp?.p);
+  if (ptok.success) {
+    try {
+      const [pt] = await db
+        .select({
+          name: patients.name,
+          phone: patients.phone,
+          email: patients.email,
+        })
+        .from(patients)
+        .where(eq(patients.dashboardToken, ptok.data));
+      if (pt) prefill = { name: pt.name, phone: pt.phone, email: pt.email || "" };
+    } catch {
+      prefill = null;
+    }
+  }
 
   // Reschedule mode: a valid manage token locks the flow to the existing
   // appointment's service and skips details/payment (same row is moved).
@@ -64,6 +84,7 @@ export default async function BookPage({ searchParams }) {
         clinicMode={clinic}
         preselectServiceId={reschedule?.serviceId ?? preselect}
         reschedule={reschedule}
+        prefill={prefill}
       />
     </div>
   );

@@ -9,8 +9,8 @@ import MobileNav from "@/components/MobileNav";
 
 /**
  * Two-tier public header (v2.1 reference alignment; ARYA theme unchanged):
- *  - top utility bar (lg+ only): quiet section links + language toggle + phone.
- *  - main bar: brand · mega-menu nav (DesktopNav, client) · Book + Call CTAs.
+ *  - top utility bar (lg+ only): quiet section links + language toggle.
+ *  - main bar: brand · mega-menu nav (DesktopNav, client) · Book CTA.
  * Mobile keeps the hamburger (MobileNav). All data is fetched here (server) and
  * passed to DesktopNav as serializable props — never functions.
  */
@@ -23,13 +23,8 @@ export default async function SiteHeader() {
   const s = await getSettings([
     "brand_name",
     "brand_tagline",
-    "contact_phone",
-  ]).catch(() => ({ brand_name: "ARYA", brand_tagline: "", contact_phone: "" }));
+  ]).catch(() => ({ brand_name: "ARYA", brand_tagline: "" }));
   const conditions = await getPublishedConditions();
-
-  const tel = s.contact_phone
-    ? `tel:${String(s.contact_phone).replace(/\s/g, "")}`
-    : null;
 
   // "Conditions We Treat" mega menu — columns grouped by category from the
   // published conditions (DB rows or code fallback), ordered by CATEGORY_ORDER.
@@ -118,11 +113,6 @@ export default async function SiteHeader() {
           </nav>
           <div className="flex items-center gap-4">
             <LanguageToggle />
-            {s.contact_phone ? (
-              <a href={tel} className="font-semibold text-sage-deep hover:text-terracotta">
-                {s.contact_phone}
-              </a>
-            ) : null}
           </div>
         </div>
       </div>
@@ -151,14 +141,6 @@ export default async function SiteHeader() {
         <DesktopNav menus={menus} links={plainLinks} />
 
         <div className="flex items-center gap-3">
-          {tel ? (
-            <a
-              href={tel}
-              className="hidden lg:inline-block btn-ghost text-sm !py-2 !px-4"
-            >
-              {t("callNow")}
-            </a>
-          ) : null}
           <Link href="/book" className="hidden sm:inline-block btn-primary text-sm">
             {t("book")}
           </Link>

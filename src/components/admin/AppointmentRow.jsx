@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 import {
   cancelAppointment,
   clearReview,
-  completeAppointment,
   confirmAppointment,
+  markAppointmentCompleted,
   saveDoctorNotes,
 } from "@/app/admin/actions/appointments";
 
@@ -79,11 +79,11 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
           )}
           {appt.status === "confirmed" && (
             <button
-              onClick={() => run(() => completeAppointment(appt.id))}
+              onClick={() => run(() => markAppointmentCompleted(appt.id))}
               disabled={pending}
               className="btn-ghost text-xs py-1 px-3"
             >
-              Complete
+              Mark completed
             </button>
           )}
           {appt.needsReview && (
@@ -142,6 +142,12 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
                 </button>
               </div>
               <div>
+                <p className="font-semibold mb-1">Problem described at booking</p>
+                {appt.problemNote ? (
+                  <p className="mb-3">{appt.problemNote}</p>
+                ) : (
+                  <p className="text-ink-soft mb-3">Not provided.</p>
+                )}
                 <p className="font-semibold mb-1">Pre-consultation intake</p>
                 {appt.intakeAnswers ? (
                   <dl className="space-y-1">

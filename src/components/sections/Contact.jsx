@@ -17,17 +17,6 @@ export default async function Contact({ settings }) {
       </h2>
       <div className="grid gap-8 md:grid-cols-2">
         <div className="space-y-3 text-ink-soft">
-          {settings?.contact_phone && (
-            <p>
-              {t("contact.call")}:{" "}
-              <a
-                href={`tel:${String(settings.contact_phone).replace(/\s/g, "")}`}
-                className="text-sage-deep font-semibold"
-              >
-                {settings.contact_phone}
-              </a>
-            </p>
-          )}
           {wa && (
             <p>
               <a href={wa} target="_blank" rel="noreferrer" className="btn-ghost inline-block">

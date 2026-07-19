@@ -22,7 +22,7 @@ export async function GET() {
     .orderBy(desc(appointments.startAt));
 
   const header = [
-    "id", "status", "patient_name", "phone", "email", "service", "mode",
+    "id", "status", "patient_name", "phone", "email", "problem", "service", "mode",
     "start_ist", "amount_inr", "utr", "needs_review", "created_ist",
   ];
   const lines = [header.join(",")];
@@ -34,6 +34,7 @@ export async function GET() {
         a.patientName,
         a.patientPhone,
         a.patientEmail,
+        a.problemNote,
         serviceTitle,
         a.mode,
         formatIst(a.startAt),

@@ -10,7 +10,7 @@ export function renderTemplate(text, values) {
 }
 
 /** Canonical placeholder values for an appointment (plan §7). */
-export function buildValues(appt, serviceTitle, settings) {
+export function buildValues(appt, serviceTitle, settings, dashboardToken) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const wa = settings.contact_whatsapp
     ? `https://wa.me/${String(settings.contact_whatsapp).replace(/\D/g, "")}`
@@ -23,6 +23,8 @@ export function buildValues(appt, serviceTitle, settings) {
     amount: appt.amountInr,
     meet_link: appt.meetingLink || "",
     manage_link: siteUrl ? `${siteUrl}/manage/${appt.manageToken}` : "",
+    dashboard_link:
+      siteUrl && dashboardToken ? `${siteUrl}/patient/${dashboardToken}` : "",
     upi_id: settings.upi_id || "",
     doctor_name: settings.payee_name || "Dr. Seema",
     whatsapp_link: wa,

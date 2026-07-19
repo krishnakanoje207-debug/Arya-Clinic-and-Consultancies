@@ -28,7 +28,7 @@ export default async function TestimonialsPage() {
   const [testimonials, cases, settings] = await Promise.all([
     getPublishedTestimonials(),
     getPublishedCases(),
-    getSettings(["contact_phone", "contact_whatsapp", "google_reviews_url"]),
+    getSettings(["contact_whatsapp", "google_reviews_url"]),
   ]);
 
   const tmItems = testimonials.map((tm) => ({
@@ -50,9 +50,6 @@ export default async function TestimonialsPage() {
     after: c.afterImage,
   }));
 
-  const phone = settings?.contact_phone
-    ? String(settings.contact_phone).replace(/\s/g, "")
-    : null;
   const wa = settings?.contact_whatsapp
     ? `https://wa.me/${String(settings.contact_whatsapp).replace(/\D/g, "")}`
     : null;
@@ -143,11 +140,6 @@ export default async function TestimonialsPage() {
                 <Link href="/book" className="btn-primary">
                   {t("nav.book")}
                 </Link>
-                {phone ? (
-                  <a href={`tel:${phone}`} className="btn-ghost">
-                    {t("contact.call")}
-                  </a>
-                ) : null}
                 {wa ? (
                   <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-ghost">
                     {t("contact.whatsapp")}

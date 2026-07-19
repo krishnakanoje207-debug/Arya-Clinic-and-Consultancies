@@ -1,8 +1,9 @@
 import { and, eq, gte, lt } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments } from "@/db/schema";
-import { IST_ZONE, istToday } from "@/lib/time";
-import { dispatchNotification } from "@/lib/notify";
+import { IST_ZONE, istToday, nowUtc } from "@/lib/time";
+import { dispatchMedicationReminder, dispatchNotification } from "@/lib/notify";
+import { getMedicationReminders, markRefillReminderSent } from "@/lib/medications";
 import { DateTime } from "luxon";
 
 /**
@@ -52,5 +53,26 @@ export async function GET(request) {
       .where(eq(appointments.id, appt.id));
   }
 
-  return Response.json({ ok: true, reminded: due.length });
+  // Medication reminders: a daily "take your medicine" nudge while the supply
+  // is active, plus a one-time refill prompt ~3 days before it runs out. Dose
+  // reminders carry no flag — the once-a-day cron cadence is the dedup, and a
+  // duplicate over a missed day is accepted project-wide. Refill prompts are
+  // send-then-mark, same policy as the appointment reminders above.
+  const now = nowUtc();
+  const { doseOrders, refillOrders } = await getMedicationReminders(now);
+
+  for (const { order, patient } of doseOrders) {
+    await dispatchMedicationReminder("medication_dose", order, patient);
+  }
+  for (const { order, patient } of refillOrders) {
+    await dispatchMedicationReminder("medication_refill", order, patient);
+    await markRefillReminderSent(order.id);
+  }
+
+  return Response.json({
+    ok: true,
+    reminded: due.length,
+    doseReminders: doseOrders.length,
+    refillReminders: refillOrders.length,
+  });
 }

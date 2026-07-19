@@ -40,7 +40,7 @@ async function seedSettings() {
     upi_id: "seema.kanoje18-1@oksbi",
     upi_number: "8999758063",
     contact_phone: "+91 89997 58063",
-    contact_whatsapp: "918999758063", // digits only — wa.me needs country code
+    contact_whatsapp: "918605015122", // digits only — wa.me needs country code
     consultation_hours: "By appointment · Online (worldwide) and clinic (Nagpur & Pune)",
   };
   const merged = { ...SETTINGS_DEFAULTS, ...REAL };
@@ -69,8 +69,8 @@ async function seedProfile() {
       yearsExperience: 20,
       stats: [
         { label: "Years Experience", label_hi: "वर्षों का अनुभव", value: "20+" },
-        { label: "Cities Served", label_hi: "सेवित शहर", value: "Nagpur · Pune" },
-        { label: "Online", label_hi: "ऑनलाइन", value: "Worldwide" },
+        { label: "Severe Cases Treated", label_hi: "इलाज किए गए गंभीर मामले", value: "100+" },
+        { label: "In-Clinic & Online Worldwide", label_hi: "क्लिनिक और ऑनलाइन विश्वभर", value: "Nagpur · Pune" },
       ],
       heroImage: "/brand/dr-seema.jpeg",
       aboutImage: "/brand/dr-seema.jpeg",
@@ -178,15 +178,34 @@ async function seedPlaceholderShowcase() {
   if (!(await hasRows(testimonials)))
     await db
       .insert(testimonials)
-    .values({
-      patientName: "R. S.",
-      text: "Placeholder testimonial — replace via admin. Compassionate care and real improvement.",
-      rating: 5,
-      consentConfirmed: false,
-      published: false,
-      sortOrder: 0,
-    })
-    .onConflictDoNothing();
+      .values([
+        {
+          patientName: "Mangal Sarvade",
+          text: "Dr. Seema Prajapati Mam has been our family doctor for more than 14 years now. My mother is a spine-injury and heart patient, so we visited Arya Clinic 14 years ago for her emergency treatment, and from the first day till date we have taken treatment from Dr. Seema Prajapati Mam. Thank you for your dedication and commitment to providing the best care — your compassion and expertise are truly inspiring. I can't thank you enough for the special, excellent care you have provided and for the unique gift you are to your patients. Thank you for taking such great care of my mother; your kindness and expertise made a difficult time much easier.",
+          rating: 5,
+          consentConfirmed: true,
+          published: true,
+          sortOrder: 1,
+        },
+        {
+          patientName: "Sonali Sarvade",
+          text: "I am incredibly happy with the services provided at Arya Clinic. Dr. Seema Prajapati Mam is professional and helpful. My father was diagnosed at a critical asthma stage, and throughout the treatment Dr. Seema Mam was remarkably supportive, keeping me at ease by being encouraging and reassuring. I highly recommend her expertise to anyone in need of specialized health care.",
+          rating: 5,
+          condition: "Asthma",
+          consentConfirmed: true,
+          published: true,
+          sortOrder: 2,
+        },
+        {
+          patientName: "Aruna Kotian",
+          text: "I've had a wonderful experience with Dr. Seema. Unlike other consultations where I felt rushed, she took over an hour during my first visit to really understand my lifestyle and history. The remedies prescribed have been gentle and effective, and I appreciate how she explained the logic behind the treatment plan. Highly recommend for anyone looking for personalized care.",
+          rating: 5,
+          consentConfirmed: true,
+          published: true,
+          sortOrder: 3,
+        },
+      ])
+      .onConflictDoNothing();
 
   if (!(await hasRows(caseGallery)))
     await db
