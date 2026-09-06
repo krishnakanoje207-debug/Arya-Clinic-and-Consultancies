@@ -1,13 +1,13 @@
 # Fix Plan — 2026-07-06 (user bug review)
 
-> **STATUS — ALL CLOSED (2026-07-06).** O1–O5 done by Opus 4.8; Fable review pass done
+> **STATUS — ALL CLOSED (2026-07-06).** O1–O5 implemented; review pass done
 > (build + eslint + smoke 8/8 re-verified on a clean .next; fixed swapped Cloudinary
 > values in .env.example; flagged that the repo has everything uncommitted on top of the
 > initial CNA commit). **F1 RESOLVED: user chose Option A — keep manual UTR + one-tap
 > confirm. Nothing to build; B (bank-SMS match) / C (gateway) remain documented upgrade
 > paths if booking volume grows.**
 
-Executor: **Opus 4.8** does ALL implementation tasks below (O1–O5). **Fable** only reviews
+Implementation covers ALL tasks below (O1–O5); a separate review pass checks
 the finished diff and handles the payment-automation decision (F1) if the user opts in.
 Work against the live local stack: `docker compose up -d` + `npm run dev`
 (admin login `admin@arya.local` / `AryaAdmin@2026`). Read `AGENTS.md` first (Next 16!).
@@ -118,7 +118,7 @@ final `npm run build` + `npx eslint src` + `scripts/smoke-admin.mjs` all clean.
 
 ---
 
-## F1 — Fable (only if user opts in): payment auto-confirmation design — issue #6
+## F1 (only if user opts in): payment auto-confirmation design — issue #6
 
 **Answer to the user's question:** with plain UPI (no gateway) there is NO official way
 for software to know a payment arrived — banks/NPCI expose no free consumer API. Options:

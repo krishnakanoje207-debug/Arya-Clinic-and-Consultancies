@@ -11,7 +11,7 @@ import { DateTime } from "luxon";
  * sends reminders for *tomorrow's* confirmed appointments in one pass
  * (schedule it ~08:00 IST in vercel.json). Protected by CRON_SECRET.
  *
- * The actual email/SMS dispatch is the notification adapter (Fable §5); this
+ * The actual email/SMS dispatch is the notification adapter; this
  * route selects the due appointments and marks them reminded.
  */
 export async function GET(request) {

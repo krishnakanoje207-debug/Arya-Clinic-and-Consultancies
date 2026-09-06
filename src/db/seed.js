@@ -236,7 +236,7 @@ async function seedPlaceholderShowcase() {
 }
 
 /** Seven booking-event templates × two channels (email + sms). Placeholders
- * like {patient_name} are filled by the notification adapter (Fable §5). */
+ * like {patient_name} are filled by the notification adapter. */
 async function seedTemplates() {
   if (await hasRows(messageTemplates)) return;
   const T = [

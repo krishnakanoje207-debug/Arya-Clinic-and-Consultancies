@@ -38,15 +38,15 @@ provisioned.
 - i18n: `next-intl`, cookie-based EN/HI toggle (`messages/`).
 - PWA: `public/manifest.webmanifest` + `public/sw.js` (offline fallback).
 
-## Work split (this build)
+## Build log
 
-| Area | Owner | Status |
-| --- | --- | --- |
-| Scaffold, schema + migration, booking engine, public UI, admin CRUD, research, clinic mode, i18n, PWA, SEO, seeds | **Opus 4.8** | done |
-| Auth.js v5 credentials login (`/admin/login`), Account/change-password, `proxy.js` rate limiting, zod validation, per-phone hold cap | **Fable 5** | done |
-| Notification adapter (`src/lib/notify/` — Gmail SMTP + textbee SMS + `.ics`), wired to all booking events + daily reminder cron; real token reschedule (same-row move, 23P01-safe); admin confirm 23P01 handling; test-SMS button | **Fable 5** | done |
-| Bug-fix + feature batch: storage-meter `.rows`, PWA icons (`scripts/gen-icons.mjs`), mobile nav, slotLength vestige, seed idempotency, checkbox defaults, `SafeImage` host guard, templates editor, CSV export, gallery filter, sitemap/robots, Hindi stat labels, cancel cutoff; real ARYA/Dr. Seema Prajapati client data seeded | **Opus 4.8** | done |
-| Storage archival tool (`src/lib/archive.js` — deliver-then-purge, Drive optional), ARYA lotus theme + animations (Reveal, blobs, swoosh, card lifts), no-DB fallbacks with real client data, brand settings fields | **Fable 5** | done |
+| Area | Status |
+| --- | --- |
+| Scaffold, schema + migration, booking engine, public UI, admin CRUD, research, clinic mode, i18n, PWA, SEO, seeds | done |
+| Auth.js v5 credentials login (`/admin/login`), Account/change-password, `proxy.js` rate limiting, zod validation, per-phone hold cap | done |
+| Notification adapter (`src/lib/notify/` — Gmail SMTP + textbee SMS + `.ics`), wired to all booking events + daily reminder cron; real token reschedule (same-row move, 23P01-safe); admin confirm 23P01 handling; test-SMS button | done |
+| Bug-fix + feature batch: storage-meter `.rows`, PWA icons (`scripts/gen-icons.mjs`), mobile nav, slotLength vestige, seed idempotency, checkbox defaults, `SafeImage` host guard, templates editor, CSV export, gallery filter, sitemap/robots, Hindi stat labels, cancel cutoff; real ARYA/Dr. Seema Prajapati client data seeded | done |
+| Storage archival tool (`src/lib/archive.js` — deliver-then-purge, Drive optional), ARYA lotus theme + animations (Reveal, blobs, swoosh, card lifts), no-DB fallbacks with real client data, brand settings fields | done |
 
 **All planned tasks are complete.** Remaining before launch: provision Neon,
 fill `.env`, `db:migrate` + `db:seed`, enter the client's outstanding details
