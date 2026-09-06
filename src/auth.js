@@ -15,6 +15,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 },
   pages: { signIn: "/admin/login" },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      try {
+        const target = new URL(url, baseUrl);
+        const base = new URL(baseUrl);
+        const targetLength = target.pathname.length + target.search.length;
+        if (target.origin === base.origin && targetLength <= 2048) {
+          return `${target.pathname}${target.search}${target.hash}`;
+        }
+      } catch {
+        // Fall through to the fixed local destination below.
+      }
+      return "/admin/login";
+    },
+  },
   providers: [
     Credentials({
       credentials: { email: {}, password: {} },
