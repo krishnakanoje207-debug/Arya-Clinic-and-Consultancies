@@ -68,4 +68,3 @@ if (!changed) {
   console.log(`\nDry run (${changed} row(s) would change). Re-run with --apply to write.`);
 }
 
-process.exit(0);
