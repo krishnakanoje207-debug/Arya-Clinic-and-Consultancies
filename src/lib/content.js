@@ -42,8 +42,8 @@ async function safe(fn, fallback) {
 const DEFAULT_PROFILE = {
   id: 0,
   name: "Dr. Seema Prajapati",
-  tagline: "Modern & classical homoeopathy — healing starts here",
-  taglineHi: "आधुनिक एवं शास्त्रीय होम्योपैथी — यहीं से आरोग्य आरंभ",
+  tagline: "Modern & classical homoeopathy",
+  taglineHi: "आधुनिक एवं शास्त्रीय होम्योपैथी",
   bio: "Dr. Seema Prajapati (BHMS) is a homoeopathic physician with 20 years of clinical experience, blending modern and classical homoeopathy. Based in Maharashtra, she cares for patients across Pune and Nagpur and offers online consultations worldwide.\n\nShe specialises in women's health — including menstrual problems, uterine fibroids and ovarian cysts — alongside dedicated paediatric care. Over two decades she has developed homoeopathic protocols for chronic respiratory conditions such as asthma, skin diseases, and metabolic and lifestyle disorders including diabetes, obesity and hair loss.",
   bioHi:
     "डॉ. सीमा प्रजापति (BHMS) 20 वर्षों के नैदानिक अनुभव वाली होम्योपैथिक चिकित्सक हैं, जो आधुनिक एवं शास्त्रीय होम्योपैथी का समन्वय करती हैं। महाराष्ट्र में स्थित, वे पुणे और नागपुर में तथा विश्वभर में ऑनलाइन परामर्श प्रदान करती हैं।",
