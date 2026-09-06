@@ -26,6 +26,11 @@ export const SETTINGS_DEFAULTS = {
   contact_whatsapp: "918605015122",
   contact_email: "",
   google_reviews_url: "", // Google Business review link; badge hidden when empty
+  // Fallback video room attached to online consults at confirmation when no
+  // per-appointment link was generated (see src/lib/gcal.js). A reusable
+  // "meeting for later" Meet link works here. Left empty ⇒ no link is set
+  // and the doctor pastes one per appointment as before.
+  default_meet_link: "",
   // Full-viewport photo behind the hero + About Me sections on the homepage
   // (a fixed layer the other opaque sections scroll over). Admin-overridable;
   // a warm clinic stock photo ships as the default.

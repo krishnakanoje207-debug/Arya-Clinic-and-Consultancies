@@ -131,6 +131,9 @@ export const slotOverrides = pgTable("slot_overrides", {
 export const patients = pgTable("patients", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  // Identity form of the name (see normalizeName in src/lib/patients.js).
+  // UNIQUE together with phone, so one number can carry several people.
+  nameKey: text("name_key").notNull(),
   phone: text("phone").notNull(), // normalized form (last 10 digits)
   email: text("email"),
   dashboardToken: text("dashboard_token").notNull().unique(),

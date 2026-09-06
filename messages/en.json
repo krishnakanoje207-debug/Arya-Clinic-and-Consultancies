@@ -244,7 +244,12 @@
     "confirmNewTime": "Confirm new time",
     "rescheduleDone": "Your appointment has been moved.",
     "rescheduleFailed": "This booking can no longer be rescheduled online. Please contact the clinic.",
-    "viewDashboard": "View your patient dashboard"
+    "viewDashboard": "View your patient dashboard",
+    "forWhom": "Who is this consultation for?",
+    "forSelf": "Myself",
+    "forOther": "Someone else",
+    "patientName": "Patient's full name",
+    "otherHint": "Enter the patient's name above and your own number here — we'll message you, and the patient gets their own private dashboard link."
   },
   "patientDashboard": {
     "title": "Your patient dashboard",
@@ -265,7 +270,8 @@
       "completed": "Completed",
       "cancelled": "Cancelled",
       "expired": "Expired"
-    }
+    },
+    "joinOpensAt": "Join link opens at {time} IST"
   },
   "intake": {
     "chiefComplaint": "Main complaint / reason for consultation",

@@ -92,6 +92,13 @@
       "when": 1753660800000,
       "tag": "0012_profile_badges",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1753747200000,
+      "tag": "0013_patient_identity",
+      "breakpoints": true
     }
   ]
 }

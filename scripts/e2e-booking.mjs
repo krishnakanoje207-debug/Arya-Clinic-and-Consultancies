@@ -35,10 +35,11 @@ try {
   const hold = new Date(Date.now() + 15 * 60000).toISOString();
 
   // Mirror src/lib/patients.js upsertPatientForBooking: find-or-create the
-  // patient keyed by normalized phone, then link the appointment to it.
+  // patient keyed by normalized phone AND normalized name, then link the
+  // appointment to it.
   const [pat] = await sql`
-    insert into patients (name, phone) values ('E2E Test', ${NORM})
-    on conflict (phone) do update set name = excluded.name, updated_at = now()
+    insert into patients (name, name_key, phone) values ('E2E Test', 'e2e test', ${NORM})
+    on conflict (phone, name_key) do update set name = excluded.name, updated_at = now()
     returning id, dashboard_token`;
   log(!!pat, `upserted patient #${pat?.id}`);
 
@@ -54,18 +55,39 @@ try {
   const [pc1] = await sql`select count(*)::int as n from patients where phone = ${NORM}`;
   log(pc1.n === 1, `exactly one patient row for phone (${pc1.n})`);
 
+  // Booking for someone else on the SAME number must not merge the two
+  // people into one record behind one dashboard token (see migration 0013).
+  const [other] = await sql`
+    insert into patients (name, name_key, phone) values ('E2E Relative', 'e2e relative', ${NORM})
+    on conflict (phone, name_key) do update set name = excluded.name, updated_at = now()
+    returning id, dashboard_token`;
+  log(other.id !== pat.id, `second person on the same number gets their own row (#${other.id})`);
+  log(
+    other.dashboard_token !== pat.dashboard_token,
+    `...and their own dashboard token`,
+  );
+  const [first] = await sql`select name, dashboard_token from patients where id = ${pat.id}`;
+  log(first.name === "E2E Test", `first person's name not overwritten (${first.name})`);
+  log(
+    first.dashboard_token === pat.dashboard_token,
+    `first person's magic link unchanged`,
+  );
+  const [pcBoth] = await sql`select count(*)::int as n from patients where phone = ${NORM}`;
+  log(pcBoth.n === 2, `two people now share the contact number (${pcBoth.n})`);
+
   await sql`update appointments set utr = 'E2ETEST123456', utr_submitted_at = now(), updated_at = now() where id = ${appt.id}`;
   const [withUtr] = await sql`select utr from appointments where id = ${appt.id}`;
   log(withUtr.utr === "E2ETEST123456", `submitted UTR (${withUtr.utr})`);
 
-  // Booking the SAME phone again must reuse the patient, not create a second.
+  // Re-booking as the SAME person must reuse their row (the client's
+  // "memory stays persistent" requirement), not create a second one.
   const [pat2] = await sql`
-    insert into patients (name, phone) values ('E2E Dup', ${NORM})
-    on conflict (phone) do update set name = excluded.name, updated_at = now()
+    insert into patients (name, name_key, phone) values ('E2E Test', 'e2e test', ${NORM})
+    on conflict (phone, name_key) do update set name = excluded.name, updated_at = now()
     returning id`;
-  log(pat2.id === pat.id, `same phone re-upsert returns same patient #${pat2.id}`);
+  log(pat2.id === pat.id, `re-booking as the same person returns patient #${pat2.id}`);
   const [pc2] = await sql`select count(*)::int as n from patients where phone = ${NORM}`;
-  log(pc2.n === 1, `still exactly one patient row after re-upsert (${pc2.n})`);
+  log(pc2.n === 2, `no extra row created by the re-upsert (${pc2.n})`);
 
   // Double-book the exact slot → must be rejected by the exclusion constraint.
   let rejected = false;

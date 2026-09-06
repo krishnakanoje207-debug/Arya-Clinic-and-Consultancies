@@ -64,8 +64,9 @@ export async function dispatchNotification(event, appt, opts = {}) {
               appt,
               serviceTitle,
               doctorName: values.doctor_name,
+              dashboardLink: values.dashboard_link,
               location:
-                appt.mode === "clinic" ? settings.clinic_address : appt.meetingLink,
+                appt.mode === "clinic" ? settings.clinic_address : null,
             }),
             contentType: "text/calendar; charset=utf-8; method=PUBLISH",
           },

@@ -47,6 +47,27 @@ export default function BookingFlow({
     note: "",
   });
   const detailsRef = useRef(null);
+
+  /* Switching who the consult is for swaps the name field, so one person's
+     name is never submitted as the other's. The name typed for yourself is
+     parked rather than discarded — switching away and back should not make
+     you retype it. */
+  const [selfName, setSelfName] = useState(prefill?.name || "");
+  function chooseBookingFor(next) {
+    if (next === bookingFor) return;
+    if (next === "other") {
+      setSelfName(patient.name);
+      setPatient({ ...patient, name: "" });
+    } else {
+      setPatient({ ...patient, name: selfName });
+    }
+    setBookingFor(next);
+  }
+  // The name field is always the PATIENT's name; the phone stays the
+  // booker's contact. Patient identity is (phone + name), so booking for
+  // someone else on your own number gives them their own record and their
+  // own dashboard link instead of merging into yours.
+  const [bookingFor, setBookingFor] = useState("self");
   const [booking, setBooking] = useState(null);
   const [payment, setPayment] = useState(null);
   const [error, setError] = useState(null);
@@ -313,9 +334,33 @@ export default function BookingFlow({
                         : "booking.modeClinic",
                     )}
                   </p>
+                  <fieldset>
+                    <legend className="text-sm text-ink mb-2">
+                      {t("booking.forWhom")}
+                    </legend>
+                    <div className="flex flex-wrap gap-4">
+                      {["self", "other"].map((v) => (
+                        <label
+                          key={v}
+                          className="flex items-center gap-2 text-sm text-ink"
+                        >
+                          <input
+                            type="radio"
+                            name="bookingFor"
+                            value={v}
+                            checked={bookingFor === v}
+                            onChange={() => chooseBookingFor(v)}
+                          />
+                          {t(v === "self" ? "booking.forSelf" : "booking.forOther")}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
                   <input
                     required
-                    placeholder={t("booking.name")}
+                    placeholder={t(
+                      bookingFor === "other" ? "booking.patientName" : "booking.name",
+                    )}
                     value={patient.name}
                     onChange={(e) =>
                       setPatient({ ...patient, name: e.target.value })
@@ -331,6 +376,11 @@ export default function BookingFlow({
                     }
                     className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
                   />
+                  {bookingFor === "other" && (
+                    <p className="text-xs text-ink-soft">
+                      {t("booking.otherHint")}
+                    </p>
+                  )}
                   <textarea
                     required
                     rows={3}

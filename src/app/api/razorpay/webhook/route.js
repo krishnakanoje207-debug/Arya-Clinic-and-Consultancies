@@ -79,8 +79,13 @@ async function handleCaptured(payment) {
     const res = await confirmPaidAppointment(appt.id, { paymentId });
     if (res.ok) {
       if (res.already) return "noop";
-      await dispatchNotification("confirmed", res.appointment, { includeIcs: true });
-      await createAppointmentEvent(res.appointment);
+      // Calendar first: a Meet link minted for this appointment has to exist
+      // before the confirmation goes out, or the patient gets the stale one.
+      const cal = await createAppointmentEvent(res.appointment);
+      const confirmed = cal.meetingLink
+        ? { ...res.appointment, meetingLink: cal.meetingLink }
+        : res.appointment;
+      await dispatchNotification("confirmed", confirmed, { includeIcs: true });
       return "confirmed";
     }
     // slot_taken / bad_state / not_found → the patient paid for a slot they can

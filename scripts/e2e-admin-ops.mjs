@@ -59,8 +59,11 @@ try {
   // A test patient (mirrors upsertPatientForBooking's insert).
   const [pat] = await db
     .insert(patients)
-    .values({ name: "E2E Admin", phone: NORM })
-    .onConflictDoUpdate({ target: patients.phone, set: { name: "E2E Admin" } })
+    .values({ name: "E2E Admin", nameKey: "e2e admin", phone: NORM })
+    .onConflictDoUpdate({
+      target: [patients.phone, patients.nameKey],
+      set: { name: "E2E Admin" },
+    })
     .returning();
   patientId = pat.id;
 

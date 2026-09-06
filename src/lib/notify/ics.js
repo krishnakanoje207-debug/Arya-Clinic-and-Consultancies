@@ -13,7 +13,17 @@ function icsEscape(text) {
     .replace(/\r?\n/g, "\\n");
 }
 
-export function buildIcs({ appt, serviceTitle, doctorName, location }) {
+/* The raw meeting URL is deliberately NOT embedded here: this attachment
+   rides on the confirmation email, which goes out as soon as payment lands,
+   and a Meet URL never expires. The calendar entry points at the dashboard,
+   which reveals the Join button only inside the appointment's window. */
+export function buildIcs({
+  appt,
+  serviceTitle,
+  doctorName,
+  location,
+  dashboardLink,
+}) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -26,8 +36,8 @@ export function buildIcs({ appt, serviceTitle, doctorName, location }) {
     `DTEND:${icsDate(appt.endAt)}`,
     `SUMMARY:${icsEscape(`${serviceTitle} — ${doctorName}`)}`,
     `DESCRIPTION:${icsEscape(
-      appt.meetingLink
-        ? `Join: ${appt.meetingLink}`
+      dashboardLink
+        ? `Your appointment details and join link: ${dashboardLink}`
         : "Your consultation appointment.",
     )}`,
     `LOCATION:${icsEscape(location || (appt.mode === "online" ? "Online" : ""))}`,

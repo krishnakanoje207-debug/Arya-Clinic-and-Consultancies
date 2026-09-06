@@ -236,13 +236,19 @@ async function seedPlaceholderShowcase() {
 }
 
 /** Seven booking-event templates × two channels (email + sms). Placeholders
- * like {patient_name} are filled by the notification adapter. */
+ * like {patient_name} are filled by the notification adapter.
+ *
+ * {meet_link} appears ONLY in `reminder` — the message that actually tells
+ * the patient to join. The confirmation goes out the moment payment lands,
+ * and a Meet URL never expires, so putting the raw link there would hand out
+ * a standing invitation days early; it carries {dashboard_link} instead, and
+ * the dashboard reveals Join only inside the appointment's window. */
 async function seedTemplates() {
   if (await hasRows(messageTemplates)) return;
   const T = [
     ["booking_received", "Slot held — complete your payment", "Hi {patient_name}, your {service} slot on {date} at {time} is held for 15 minutes. Please pay ₹{amount} securely in the payment window to confirm your booking. Track it on your dashboard: {dashboard_link}"],
     ["payment_received", "Payment received — confirming your appointment", "Thanks {patient_name}. Your payment of ₹{amount} for {date} {time} was received and your appointment is being confirmed automatically. Track it on your dashboard: {dashboard_link}"],
-    ["confirmed", "Appointment confirmed", "Your appointment with {doctor_name} is confirmed for {date} at {time}. {meet_link} Manage your booking: {manage_link} Your personal dashboard (appointments, medicines, follow-ups — save this link): {dashboard_link}"],
+    ["confirmed", "Appointment confirmed", "Your appointment with {doctor_name} is confirmed for {date} at {time}. Manage your booking: {manage_link} Your personal dashboard (appointments, medicines, follow-ups — save this link): {dashboard_link}"],
     ["reminder", "Reminder: your appointment tomorrow", "Reminder: {patient_name}, your consultation with {doctor_name} is on {date} at {time}. {meet_link} Your dashboard: {dashboard_link}"],
     ["rescheduled", "Your appointment was rescheduled", "Hi {patient_name}, your appointment is now on {date} at {time}. Manage: {manage_link} Your dashboard: {dashboard_link}"],
     ["cancelled", "Your appointment was cancelled", "Hi {patient_name}, your appointment on {date} at {time} has been cancelled. Book again anytime from your dashboard: {dashboard_link}"],

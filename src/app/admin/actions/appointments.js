@@ -36,9 +36,14 @@ export async function confirmAppointment(id, meetingLink) {
   const res = await confirmPaidAppointment(id, { meetingLink: meetingLink || null });
   if (!res.ok) return res; // slot_taken / bad_state / not_found
   if (!res.already && res.appointment) {
-    await dispatchNotification("confirmed", res.appointment, { includeIcs: true });
-    // Best-effort Google Calendar event (no-op when unconfigured, never throws).
-    await createAppointmentEvent(res.appointment);
+    // Best-effort Google Calendar event (no-op when unconfigured, never
+    // throws). It runs BEFORE the notification so a Meet link generated for
+    // this appointment is the one the patient is told about.
+    const cal = await createAppointmentEvent(res.appointment);
+    const appt = cal.meetingLink
+      ? { ...res.appointment, meetingLink: cal.meetingLink }
+      : res.appointment;
+    await dispatchNotification("confirmed", appt, { includeIcs: true });
   }
   revalidatePath("/admin/appointments");
   revalidatePath("/admin");

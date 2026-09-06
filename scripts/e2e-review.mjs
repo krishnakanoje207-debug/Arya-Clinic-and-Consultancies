@@ -39,7 +39,7 @@ try {
   const token = randomUUID();
   const [patient] = await db
     .insert(patients)
-    .values({ name: "Review E2E", phone: NORM, dashboardToken: token })
+    .values({ name: "Review E2E", nameKey: "review e2e", phone: NORM, dashboardToken: token })
     .returning();
   patientId = patient.id;
   log(!!patient, `created patient #${patient.id}`);

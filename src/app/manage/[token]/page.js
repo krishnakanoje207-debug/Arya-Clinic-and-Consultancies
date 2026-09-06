@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
-import { formatIst } from "@/lib/time";
+import { formatIst, nowUtc } from "@/lib/time";
+import { canJoin, joinWindow } from "@/lib/meeting";
 import ManageActions from "@/components/ManageActions";
 
 export const metadata = { title: "Manage your appointment" };
@@ -26,6 +27,8 @@ export default async function ManagePage({ params }) {
 
   if (!row) notFound();
   const a = row.appt;
+
+  const now = nowUtc();
 
   const statusLabel = {
     pending_payment: "Awaiting payment / verification",
@@ -56,12 +59,20 @@ export default async function ManagePage({ params }) {
           <p>
             <span className="text-ink-soft">Status:</span> {statusLabel}
           </p>
+          {/* Live only inside the join window — a Meet URL never expires. */}
           {a.meetingLink && a.status === "confirmed" ? (
-            <p>
-              <a href={a.meetingLink} className="text-sage-deep font-semibold">
-                Join video consultation
-              </a>
-            </p>
+            canJoin(a, now) ? (
+              <p>
+                <a href={a.meetingLink} className="text-sage-deep font-semibold">
+                  Join video consultation
+                </a>
+              </p>
+            ) : !joinWindow(a, now).hasClosed ? (
+              <p className="text-ink-soft">
+                Join link opens at{" "}
+                {formatIst(joinWindow(a, now).opensAt, "hh:mm a")} IST
+              </p>
+            ) : null
           ) : null}
         </div>
 

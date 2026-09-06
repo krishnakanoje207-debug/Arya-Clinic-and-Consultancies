@@ -10,6 +10,7 @@ import {
 } from "@/db/schema";
 import { IST_ZONE, addMinutes, istToday, istWeekday, nowUtc } from "@/lib/time";
 import { upsertPatientForBooking } from "@/lib/patients";
+import { getSettings } from "@/lib/settings";
 import { DateTime } from "luxon";
 
 const HOLD_MINUTES = 15;
@@ -451,6 +452,25 @@ export async function confirmPaidAppointment(id, opts = {}) {
   const set = { status: "confirmed", needsReview: false, updatedAt: nowUtc() };
   if (paymentId) set.razorpayPaymentId = paymentId;
   if (meetingLink !== undefined) set.meetingLink = meetingLink || null;
+  // An online consult that still has no link falls back to the clinic's
+  // reusable room, so the doctor never has to paste one by hand. Keyed on
+  // whether the caller PASSED a link, not on its truthiness: the admin
+  // Confirm button always sends `meetingLink || null`, so clearing a
+  // pre-filled field would otherwise write null and skip the fallback,
+  // leaving a confirmed online consult with no link at all. Best-effort —
+  // an unreadable settings row must not block a paid confirmation.
+  const resolvedLink =
+    "meetingLink" in set ? set.meetingLink : current.meetingLink;
+  if (current.mode === "online" && !resolvedLink) {
+    try {
+      const { default_meet_link: fallback } = await getSettings([
+        "default_meet_link",
+      ]);
+      if (fallback) set.meetingLink = fallback;
+    } catch {
+      /* leave the link unset */
+    }
+  }
   try {
     const [row] = await db
       .update(appointments)

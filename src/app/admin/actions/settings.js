@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { setSetting } from "@/lib/settings";
 import { requireAdmin } from "@/lib/admin-auth";
+import { disconnect as disconnectGoogleOauth } from "@/lib/google-oauth";
 import { sendSms, smsConfigured } from "@/lib/notify/sms";
 
 /** Persist the Settings form. Text keys are stored verbatim; the two
@@ -24,6 +25,7 @@ export async function saveSettings(prevState, formData) {
     "contact_whatsapp",
     "contact_email",
     "google_reviews_url",
+    "default_meet_link",
     "home_bg_image",
     "consultation_hours",
     "seo_title",
@@ -50,6 +52,17 @@ export async function saveSettings(prevState, formData) {
   );
 
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+/** Admin ▸ Settings "Disconnect" — forgets the stored Google refresh token,
+ * so calendar events fall back to the service account and stop carrying a
+ * per-appointment Meet link. The token is never rendered, only cleared. */
+export async function disconnectGoogleAccount() {
+  const s = await requireAdmin();
+  if (!s.authed) return { ok: false, error: "Unauthorized" };
+  await disconnectGoogleOauth();
+  revalidatePath("/admin/settings");
   return { ok: true };
 }
 

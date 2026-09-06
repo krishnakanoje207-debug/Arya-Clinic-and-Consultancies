@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
 import { getAccessToken, googleConfigured } from "@/lib/google-auth";
+import { getOAuthAccessToken } from "@/lib/google-oauth";
+import { getSettings } from "@/lib/settings";
 
 /**
  * Optional Google Calendar sync for the doctor's own calendar. A confirmed
@@ -14,6 +16,11 @@ import { getAccessToken, googleConfigured } from "@/lib/google-auth";
  * calendar, shared ("Make changes to events") with the service-account's
  * client_email. BEST-EFFORT: unset ⇒ silently no-op (log once, never throw,
  * never block the admin action).
+ *
+ * On top of that, when the doctor has connected her own Google account
+ * (src/lib/google-oauth.js) the *create* call is made as her and asks Google
+ * for a per-appointment Meet room; the reschedule/cancel calls stay on the
+ * service account, which retains write access to the same calendar.
  */
 
 const SCOPE = "https://www.googleapis.com/auth/calendar.events";
@@ -63,37 +70,68 @@ function eventBody(appt, serviceTitle) {
   };
 }
 
+/** A Meet room generated for this one appointment beats the generic fallback
+ * room, but must not silently replace a link the doctor typed in by hand. */
+async function meetingLinkIsReplaceable(current) {
+  if (!current) return true;
+  const { default_meet_link: fallback } = await getSettings(["default_meet_link"]);
+  return current === fallback;
+}
+
 /**
  * Create a calendar event for a confirmed appointment and store its id in
- * appointments.google_event_id. No-ops when unconfigured or when an event id
- * already exists (avoids duplicates on re-confirm). Never throws.
+ * appointments.google_event_id. When the doctor's Google account is connected
+ * the event is created as her *with* a Meet conference request, and the
+ * returned hangoutLink is stored in appointments.meeting_link (returned too,
+ * so the caller can notify the patient with it). No-ops when unconfigured or
+ * when an event id already exists (avoids duplicates on re-confirm). Never
+ * throws.
  */
 export async function createAppointmentEvent(appt) {
   try {
     if (!calendarConfigured()) return noop();
     if (appt.googleEventId) return { ok: true, already: true };
     const serviceTitle = await serviceTitleFor(appt);
-    const token = await getAccessToken(SCOPE);
+    const body = eventBody(appt, serviceTitle);
+    // A service account without domain-wide delegation cannot mint a Meet
+    // conference — Google drops createRequest without a word — so only ask for
+    // one on the OAuth path. conferenceDataVersion=1 is mandatory: without the
+    // query param the request is ignored even with a valid user token.
+    const oauthToken = await getOAuthAccessToken();
+    if (oauthToken) {
+      body.conferenceData = {
+        createRequest: {
+          requestId: `appt-${appt.id}-${Date.now()}`,
+          conferenceSolutionKey: { type: "hangoutsMeet" },
+        },
+      };
+    }
+    const token = oauthToken || (await getAccessToken(SCOPE));
     const res = await fetch(
-      `https://www.googleapis.com/calendar/v3/calendars/${calId()}/events`,
+      `https://www.googleapis.com/calendar/v3/calendars/${calId()}/events${oauthToken ? "?conferenceDataVersion=1" : ""}`,
       {
         method: "POST",
         headers: {
           authorization: `Bearer ${token}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify(eventBody(appt, serviceTitle)),
+        body: JSON.stringify(body),
       },
     );
     if (!res.ok) throw new Error(`Calendar insert: ${res.status} ${await res.text()}`);
-    const { id } = await res.json();
-    if (id) {
+    const { id, hangoutLink } = await res.json();
+    const set = {};
+    if (id) set.googleEventId = id;
+    if (hangoutLink && (await meetingLinkIsReplaceable(appt.meetingLink))) {
+      set.meetingLink = hangoutLink;
+    }
+    if (Object.keys(set).length) {
       await db
         .update(appointments)
-        .set({ googleEventId: id })
+        .set(set)
         .where(eq(appointments.id, appt.id));
     }
-    return { ok: true, id };
+    return { ok: true, id, meetingLink: set.meetingLink };
   } catch (err) {
     console.error("[gcal] create failed:", err?.message || err);
     return { ok: false, error: String(err?.message || err) };

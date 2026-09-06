@@ -138,6 +138,12 @@ export default function SettingsForm({ settings }) {
           hint="Google Business review URL. Shows a 'Review us on Google' badge on the testimonials page + footer. Leave empty to hide."
         />
         <Field label="Consultation hours" name="consultation_hours" defaultValue={s.consultation_hours} />
+        <Field
+          label="Default video meeting link"
+          name="default_meet_link"
+          defaultValue={s.default_meet_link}
+          hint="Reusable Google Meet room, attached automatically to online consults at confirmation when no per-appointment link exists. Patients only see a Join button from 10 minutes before until 30 minutes after their slot. Leave empty to paste a link per appointment instead."
+        />
       </Section>
 
       <Section title="Clinic (shown when Clinic Mode is on)">

@@ -7,6 +7,7 @@ import { appointments, patients, services } from "@/db/schema";
 import { formatIst, nowUtc } from "@/lib/time";
 import { tokenSchema } from "@/lib/validation";
 import { listOrdersForPatient } from "@/lib/medications";
+import { canJoin, joinWindow } from "@/lib/meeting";
 import { reviewExistsForPatient } from "@/lib/reviews";
 import MedicationOrderCard from "@/components/MedicationOrderCard";
 import ReviewForm from "@/components/ReviewForm";
@@ -33,9 +34,14 @@ const MED_STATUS_STYLE = {
   cancelled: "bg-terracotta text-white",
 };
 
+/* An appointment stays under "Upcoming" until its join window has CLOSED,
+   not the moment it starts. Splitting on startAt moved the card — and its
+   Join button — into "Past" exactly as the consult began, locking the
+   patient out of their own appointment. Deriving the cutoff from
+   joinWindow() keeps this split and the Join gate from ever drifting apart. */
 function isUpcoming(a, now) {
   return (
-    new Date(a.startAt) >= now &&
+    joinWindow(a, now).closesAt >= now &&
     ["confirmed", "pending_payment"].includes(a.status)
   );
 }
@@ -139,11 +145,22 @@ export default async function PatientDashboard({ params }) {
                   </p>
                 )}
                 <div className="flex flex-wrap gap-3 pt-1">
-                  {a.status === "confirmed" && a.meetingLink && (
-                    <a href={a.meetingLink} className="btn-primary text-sm">
-                      {t("patientDashboard.join")}
-                    </a>
-                  )}
+                  {/* A Meet URL never expires, so the button is live only
+                      inside the appointment's join window; before it we show
+                      the opening time instead. */}
+                  {a.status === "confirmed" &&
+                    a.meetingLink &&
+                    (canJoin(a, now) ? (
+                      <a href={a.meetingLink} className="btn-primary text-sm">
+                        {t("patientDashboard.join")}
+                      </a>
+                    ) : !joinWindow(a, now).hasClosed ? (
+                      <p className="text-sm text-ink-soft self-center">
+                        {t("patientDashboard.joinOpensAt", {
+                          time: formatIst(joinWindow(a, now).opensAt, "hh:mm a"),
+                        })}
+                      </p>
+                    ) : null)}
                   <Link
                     href={`/manage/${a.manageToken}`}
                     className="btn-ghost text-sm"
