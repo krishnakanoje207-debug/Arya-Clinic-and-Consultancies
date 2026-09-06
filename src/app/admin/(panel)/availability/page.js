@@ -17,6 +17,7 @@ const WEEKDAYS = [
   { value: "6", label: "Saturday" },
 ];
 const WD_LABEL = Object.fromEntries(WEEKDAYS.map((w) => [Number(w.value), w.label]));
+const KIND_LABEL = { open: "Consulting hours", break: "Break" };
 
 export default async function AdminAvailability() {
   const [rules, overrides, serviceRows] = await Promise.all([
@@ -35,10 +36,13 @@ export default async function AdminAvailability() {
         Availability
       </h1>
       <p className="text-sm text-ink-soft -mt-4">
-        Slots are generated from these weekly rules, minus overrides and
-        existing bookings. Times are in IST. Each slot&apos;s length matches
-        the booked service&apos;s duration — set durations under Content ▸
-        Services.
+        Slots are generated from these weekly rules, minus breaks, overrides
+        and existing bookings. Times are in IST. Each slot&apos;s length
+        matches the booked service&apos;s duration — set durations under
+        Content ▸ Services. Add a <strong>Break</strong> row (for example
+        13:00–14:00) and it is carved out of that weekday every week, so
+        lunch never has to be entered again. How far ahead patients may book,
+        and the gap left after each consultation, are under Settings.
       </p>
 
       <EntityManager
@@ -49,6 +53,7 @@ export default async function AdminAvailability() {
         addLabel="Add rule"
         columns={[
           { key: "weekday", label: "Day", format: "map", map: WD_LABEL },
+          { key: "kind", label: "Type", format: "map", map: KIND_LABEL },
           { key: "startTime", label: "Start" },
           { key: "endTime", label: "End" },
           { key: "mode", label: "Mode" },
@@ -56,6 +61,10 @@ export default async function AdminAvailability() {
         ]}
         fields={[
           { name: "weekday", label: "Day", type: "select", options: WEEKDAYS },
+          { name: "kind", label: "Type", type: "select", options: [
+            { value: "open", label: "Consulting hours" },
+            { value: "break", label: "Break (no bookings)" },
+          ] },
           { name: "mode", label: "Mode", type: "select", options: [
             { value: "online", label: "Online" },
             { value: "clinic", label: "Clinic" },

@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
-import { appointments } from "@/db/schema";
+import { appointments, services } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { confirmPaidAppointment } from "@/lib/booking";
+import { addMinutes, nowUtc } from "@/lib/time";
 import { completeAppointmentRow, shiftTodaysAppointments } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
 import { appendCompletedAppointmentRow } from "@/lib/sheets";
@@ -124,6 +125,62 @@ export async function saveMeetingLink(id, meetingLink) {
     await updateAppointmentEvent(row);
   }
   revalidatePath("/admin/appointments");
+}
+
+/**
+ * Move one appointment to a new date and time from the admin panel.
+ *
+ * Unlike the patient's own reschedule this deliberately does NOT require the
+ * new time to be on the offered grid: when the doctor is unavailable she has
+ * to be able to put a patient wherever actually suits, including outside her
+ * published hours. The one rule that still binds is the database exclusion
+ * constraint — she cannot land on top of another live appointment (23P01).
+ *
+ * The patient is notified with the existing "rescheduled" template and the
+ * calendar event is moved to match.
+ */
+export async function rescheduleAppointment(id, startAtIso) {
+  await guard();
+
+  const startAt = new Date(startAtIso);
+  if (Number.isNaN(startAt.getTime())) return { ok: false, reason: "bad_time" };
+  if (startAt <= nowUtc()) return { ok: false, reason: "in_past" };
+
+  const [row] = await db
+    .select({ appt: appointments, duration: services.durationMinutes })
+    .from(appointments)
+    .leftJoin(services, eq(appointments.serviceId, services.id))
+    .where(eq(appointments.id, Number(id)));
+  if (!row) return { ok: false, reason: "not_found" };
+  if (!["pending_payment", "confirmed"].includes(row.appt.status)) {
+    return { ok: false, reason: "not_reschedulable" };
+  }
+
+  try {
+    const [updated] = await db
+      .update(appointments)
+      .set({
+        startAt,
+        endAt: addMinutes(startAt, row.duration || 30),
+        reminderSent: false, // the reminder must fire for the new date
+        updatedAt: nowUtc(),
+      })
+      .where(eq(appointments.id, row.appt.id))
+      .returning();
+    if (updated) {
+      await dispatchNotification("rescheduled", updated);
+      await updateAppointmentEvent(updated);
+    }
+    revalidatePath("/admin/appointments");
+    revalidatePath("/admin/queue");
+    revalidatePath("/admin");
+    return { ok: true };
+  } catch (err) {
+    if (err?.code === "23P01" || err?.cause?.code === "23P01") {
+      return { ok: false, reason: "slot_taken" };
+    }
+    throw err;
+  }
 }
 
 export async function saveDoctorNotes(id, notes) {

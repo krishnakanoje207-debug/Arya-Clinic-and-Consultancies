@@ -32,6 +32,10 @@ export const consultationMode = pgEnum("consultation_mode", [
 
 export const serviceMode = pgEnum("service_mode", ["online", "clinic", "both"]);
 
+/** Weekly rules either OPEN a window for slots or carve a recurring BREAK
+ * out of it (lunch), so a break survives without being re-entered daily. */
+export const availabilityKind = pgEnum("availability_kind", ["open", "break"]);
+
 export const overrideKind = pgEnum("override_kind", [
   "blocked", // holiday / blocked date or slot range
   "extra", // additional hours outside the weekly template
@@ -108,6 +112,8 @@ export const availabilityRules = pgTable("availability_rules", {
   // in admin — services of different durations share one weekly window.
   slotLengthMinutes: integer("slot_length_minutes").notNull(),
   mode: consultationMode("mode").notNull().default("online"),
+  // "open" generates slots in this window; "break" subtracts from them.
+  kind: availabilityKind("kind").notNull().default("open"),
   active: boolean("active").notNull().default(true),
 });
 

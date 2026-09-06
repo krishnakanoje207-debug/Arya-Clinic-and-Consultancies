@@ -21,6 +21,7 @@ const { db } = await import("@/db");
 const { appointments, patients, availabilityRules, services } = await import("@/db/schema");
 const { createBooking } = await import("@/lib/booking");
 const { istToday, istWallToUtc } = await import("@/lib/time");
+const { getSettings, setSetting } = await import("@/lib/settings");
 const { DateTime } = await import("luxon");
 
 const PHONE = "9000066666", ALT = "9000077777";
@@ -32,6 +33,12 @@ for (const ph of [PHONE, ALT]) {
   await db.delete(patients).where(eq(patients.phone, ph));
 }
 const [svc] = await db.select().from(services).limit(1);
+
+// This suite books a deliberately far-future day so it can never collide with
+// real availability. That is now past the booking horizon, so lift it for the
+// run and put it back afterwards.
+const { booking_horizon_days: prevHorizon } = await getSettings(["booking_horizon_days"]);
+await setSetting("booking_horizon_days", 400);
 const day = DateTime.fromISO(istToday(), { zone: "Asia/Kolkata" }).plus({ days: 23 });
 const [rule] = await db.insert(availabilityRules).values({
   weekday: day.weekday % 7, startTime: "10:00", endTime: "16:00",
@@ -53,22 +60,22 @@ log(first.ok, `initial booking -> dashboard token ${TOKEN.slice(0,8)}…`);
 await clearHolds();
 
 // The reported scenario: books again, types their name differently.
-const b2 = await book("ramesh  PATIL jr", PHONE, "11:00", TOKEN);
+const b2 = await book("ramesh  PATIL jr", PHONE, "10:40", TOKEN);
 log(b2.ok && b2.dashboardToken === TOKEN, `different name spelling + token -> SAME dashboard link`);
 await clearHolds();
 
 // Even a different phone still lands on the record whose link they hold.
-const b3 = await book("Ramesh Patil", ALT, "12:00", TOKEN);
+const b3 = await book("Ramesh Patil", ALT, "11:20", TOKEN);
 log(b3.ok && b3.dashboardToken === TOKEN, `different phone number + token -> SAME dashboard link`);
 await clearHolds();
 
 // Without the token (typed straight into the main site) the old fork returns.
-const b4 = await book("R. Patil", PHONE, "13:00", null);
+const b4 = await book("R. Patil", PHONE, "12:00", null);
 log(b4.ok && b4.dashboardToken !== TOKEN, `no token + new name -> separate record (expected)`);
 await clearHolds();
 
 // Booking for someone else from the dashboard must NOT reuse the record.
-const b5 = await book("Sunita Patil", PHONE, "14:00", null);
+const b5 = await book("Sunita Patil", PHONE, "12:40", null);
 log(b5.ok && b5.dashboardToken !== TOKEN, `"someone else" (token withheld) -> their own record`);
 
 const [me] = await db.select().from(patients).where(eq(patients.dashboardToken, TOKEN));
@@ -79,5 +86,6 @@ const rows = await db.select().from(patients).where(inArray(patients.phone, [PHO
 for (const ph of [PHONE, ALT]) await db.delete(appointments).where(eq(appointments.patientPhone, ph));
 await db.delete(patients).where(inArray(patients.id, rows.map(r => r.id)));
 await db.delete(availabilityRules).where(eq(availabilityRules.id, rule.id));
+await setSetting("booking_horizon_days", prevHorizon);
 console.log(pass ? "\nALL PASSED" : "\nFAILURES ABOVE");
 process.exit(pass ? 0 : 1);

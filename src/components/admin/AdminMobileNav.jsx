@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 /**
  * Narrow-screen navigation for the admin panel. The sidebar in the layout is
  * `hidden md:flex`, so below md this top bar + disclosure is the only way to
- * reach the other admin pages. `links` is [[href, label], …]; `logoutAction`
+ * reach the other admin pages. `links` is [[group, [[href, label], …]], …];
+ * `logoutAction`
  * is the server action passed down from the layout (allowed as a prop).
  */
 export default function AdminMobileNav({ links, email, logoutAction }) {
@@ -44,15 +45,22 @@ export default function AdminMobileNav({ links, email, logoutAction }) {
 
       {open && (
         <nav className="px-4 pb-3 flex flex-col">
-          {links.map(([href, label]) => (
-            <Link
-              key={href}
-              href={href}
-              onClick={() => setOpen(false)}
-              className="py-2.5 text-ink border-b border-[var(--border)]"
-            >
-              {label}
-            </Link>
+          {links.map(([group, items]) => (
+            <div key={group}>
+              <p className="pt-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+                {group}
+              </p>
+              {items.map(([href, label]) => (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={() => setOpen(false)}
+                  className="block py-2.5 text-ink border-b border-[var(--border)]"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
           ))}
           <div className="flex items-center justify-between pt-3">
             <span className="text-xs text-ink-soft break-all">{email}</span>

@@ -12,6 +12,13 @@ export const SETTINGS_DEFAULTS = {
   research_published: false,
   show_fee_on_cta: false, // when true, hero Book CTA shows the first-consult fee
   cancel_cutoff_hours: 4, // no online cancel/reschedule within N hours of start
+  // How far ahead patients may book. Short enough that the doctor can honour
+  // every slot she offers; raise it only when the diary is predictable.
+  booking_horizon_days: 14,
+  // Breathing room left after each consultation. Offered slots are spaced by
+  // the service duration PLUS this, and nothing may be booked within this
+  // many minutes of an existing appointment.
+  slot_buffer_minutes: 10,
   brand_name: "ARYA",
   brand_tagline: "Healing starts here",
   // Real client values double as code-level fallbacks so the site renders

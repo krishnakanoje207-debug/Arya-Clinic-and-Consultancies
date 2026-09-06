@@ -32,6 +32,7 @@ const {
 const { getQueueBuckets, completeAppointmentRow, shiftTodaysAppointments } =
   await import("@/lib/admin");
 const { dispatchFollowUpNudge } = await import("@/lib/notify");
+const { getSettings, setSetting } = await import("@/lib/settings");
 const {
   appendCompletedAppointmentRow,
   sheetsConfigured,
@@ -43,6 +44,9 @@ const { createAppointmentEvent, calendarConfigured } = await import("@/lib/gcal"
 
 const NORM = "9999000003"; // test-only phone (last 10 digits); rows deleted below
 const DATE = "2030-03-04"; // far-future IST date, never collides with real data
+// That date is past the booking horizon, so lift it for this run.
+const { booking_horizon_days: PREV_HORIZON } = await getSettings(["booking_horizon_days"]);
+await setSetting("booking_horizon_days", 2000);
 
 function log(ok, msg) {
   console.log(`${ok ? "✓" : "✗"} ${msg}`);
@@ -252,6 +256,7 @@ try {
   await db.delete(filledSlots).where(eq(filledSlots.startAt, istWallToUtc(DATE, "10:00")));
   if (ruleId != null) await db.delete(availabilityRules).where(eq(availabilityRules.id, ruleId));
   if (patientId != null) await db.delete(patients).where(eq(patients.id, patientId));
+  await setSetting("booking_horizon_days", PREV_HORIZON);
   console.log("\ncleanup: removed test appointment/filled_slot/availability rule/patient rows");
 }
 process.exit(process.exitCode || 0);

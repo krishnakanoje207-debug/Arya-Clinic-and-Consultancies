@@ -131,11 +131,16 @@ export async function overlapsFilledSlot(startAt, endAt) {
  * UI can render them as greyed "Booked" chips (past slots stay unavailable but
  * not "Booked").
  */
-export async function getServiceCalendar(serviceId, {
-  mode,
-  days = DEFAULT_HORIZON_DAYS,
-} = {}) {
+export async function getServiceCalendar(serviceId, { mode, days } = {}) {
   await expireStaleHolds();
+
+  // How far ahead to offer, and how much breathing room to leave after each
+  // consultation. Both are admin-editable; fall back to the defaults if the
+  // settings row is unreadable so the calendar never comes back empty.
+  const { booking_horizon_days: horizon, slot_buffer_minutes: bufferSetting } =
+    await getSettings(["booking_horizon_days", "slot_buffer_minutes"]);
+  const horizonDays = days ?? Number(horizon) ?? DEFAULT_HORIZON_DAYS;
+  const buffer = Math.max(0, Number(bufferSetting) || 0);
 
   const [service] = await db
     .select()
@@ -149,7 +154,7 @@ export async function getServiceCalendar(serviceId, {
 
   const today = istToday();
   const start = DateTime.fromISO(today, { zone: IST_ZONE });
-  const dateStrs = Array.from({ length: days }, (_, i) =>
+  const dateStrs = Array.from({ length: horizonDays }, (_, i) =>
     start.plus({ days: i }).toFormat("yyyy-MM-dd"),
   );
 
@@ -200,14 +205,20 @@ export async function getServiceCalendar(serviceId, {
       continue;
     }
 
-    const blockedRanges = dayOverrides
-      .filter((o) => o.kind === "blocked" && o.startTime && o.endTime)
-      .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]);
+    const blockedRanges = [
+      ...dayOverrides
+        .filter((o) => o.kind === "blocked" && o.startTime && o.endTime)
+        .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]),
+      // Recurring weekly breaks (lunch) are carved out of every matching day.
+      ...rules
+        .filter((r) => r.kind === "break" && r.weekday === wd)
+        .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
+    ];
 
-    // Base windows = weekly rules for this weekday + any "extra" overrides.
+    // Base windows = weekly OPEN rules for this weekday + any "extra" overrides.
     const windows = [
       ...rules
-        .filter((r) => r.weekday === wd)
+        .filter((r) => r.kind !== "break" && r.weekday === wd)
         .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
       ...dayOverrides
         .filter((o) => o.kind === "extra" && o.startTime && o.endTime)
@@ -217,14 +228,21 @@ export async function getServiceCalendar(serviceId, {
     const slots = [];
     for (const [ws, we] of windows) {
       for (const [ps, pe] of subtractRanges(ws, we, blockedRanges)) {
-        for (let s = ps; s + slotLen <= pe; s += slotLen) {
+        // Step by the consultation length PLUS the buffer, so consecutive
+        // offers are never back to back.
+        for (let s = ps; s + slotLen <= pe; s += slotLen + buffer) {
           const startUtc = istMinutesToUtc(dateStr, s);
           const endUtc = istMinutesToUtc(dateStr, s + slotLen);
           const sMs = startUtc.getTime();
           const eMs = endUtc.getTime();
           const isPast = sMs <= now;
+          // Taken ranges are widened by the buffer on both sides. Stepping
+          // alone only spaces slots within one service's grid; a service of a
+          // different duration would otherwise still offer a slot butting up
+          // against an existing appointment.
+          const pad = buffer * 60000;
           const isTaken = takenRanges.some(
-            ([as, ae]) => sMs < ae && as < eMs,
+            ([as, ae]) => sMs < ae + pad && as - pad < eMs,
           );
           slots.push({
             startAt: startUtc.toISOString(),
@@ -373,6 +391,14 @@ export async function createBooking({
   }
   const endAt = addMinutes(startAt, service.durationMinutes);
 
+  // The requested time must be a slot we actually offered. The weekly hours,
+  // the recurring lunch break, the booking horizon and the buffer between
+  // consultations exist ONLY in the calendar, so without this check a crafted
+  // request could book straight through any of them.
+  if (!(await isOfferedSlot(service.id, bookingMode, startAt))) {
+    return { ok: false, reason: "slot_taken" };
+  }
+
   // A slot the doctor marked as booked (deliberate scarcity) can't be booked,
   // even by a crafted POST that never rendered it as "Booked".
   if (await overlapsFilledSlot(startAt, endAt)) {
@@ -448,6 +474,20 @@ export async function createBooking({
     if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };
     throw err;
   }
+}
+
+/** True when `startAt` is a slot the calendar currently offers as available
+ * for this service and mode. The calendar is the single source of truth for
+ * working hours, breaks, the horizon and the buffer, so booking and admin
+ * rescheduling both ask it rather than re-deriving the rules. */
+export async function isOfferedSlot(serviceId, mode, startAt) {
+  const iso = new Date(startAt).toISOString();
+  const cal = await getServiceCalendar(serviceId, { mode });
+  for (const day of cal.days) {
+    const slot = day.slots.find((s) => s.startAt === iso);
+    if (slot) return slot.available;
+  }
+  return false;
 }
 
 /**

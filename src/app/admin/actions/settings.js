@@ -44,12 +44,20 @@ export async function saveSettings(prevState, formData) {
   // Research publish toggle.
   await setSetting("research_published", Boolean(formData.get("research_published")));
 
-  // Cancellation cutoff (hours) — numeric, clamped to a sane range.
-  const cutoff = Number(formData.get("cancel_cutoff_hours"));
-  await setSetting(
-    "cancel_cutoff_hours",
-    Number.isFinite(cutoff) ? Math.min(72, Math.max(0, cutoff)) : 4,
-  );
+  // Numeric scheduling settings — clamped to sane ranges so a typo cannot
+  // close the diary or offer a year of slots.
+  const numbers = [
+    ["cancel_cutoff_hours", 4, 0, 72],
+    ["booking_horizon_days", 14, 1, 180],
+    ["slot_buffer_minutes", 10, 0, 120],
+  ];
+  for (const [key, fallback, lo, hi] of numbers) {
+    const raw = Number(formData.get(key));
+    await setSetting(
+      key,
+      Number.isFinite(raw) ? Math.min(hi, Math.max(lo, raw)) : fallback,
+    );
+  }
 
   revalidatePath("/", "layout");
   return { ok: true };

@@ -119,6 +119,43 @@ export default function SettingsForm({ settings }) {
             Patients can&apos;t cancel/reschedule online within this window. 0 = always allowed.
           </span>
         </label>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-ink mb-1">
+            How far ahead patients can book (days)
+          </span>
+          <input
+            type="number"
+            name="booking_horizon_days"
+            min="1"
+            max="180"
+            defaultValue={s.booking_horizon_days ?? 14}
+            className="w-32 rounded-lg border border-[var(--border)] px-3 py-2"
+          />
+          <span className="block text-xs text-ink-soft mt-1">
+            Keep this short enough that every slot offered can actually be
+            honoured. Raise it only once the diary is predictable.
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-ink mb-1">
+            Gap after each consultation (minutes)
+          </span>
+          <input
+            type="number"
+            name="slot_buffer_minutes"
+            min="0"
+            max="120"
+            defaultValue={s.slot_buffer_minutes ?? 10}
+            className="w-32 rounded-lg border border-[var(--border)] px-3 py-2"
+          />
+          <span className="block text-xs text-ink-soft mt-1">
+            Breathing room between appointments. Slots are offered this far
+            apart, and nothing can be booked closer than this to an existing
+            appointment. 0 = back to back.
+          </span>
+        </label>
       </Section>
 
       <Section title="UPI payment details">

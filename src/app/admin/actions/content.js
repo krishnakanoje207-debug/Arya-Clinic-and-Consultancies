@@ -295,6 +295,7 @@ export async function upsertRule(prevState, fd) {
     endTime: str(fd, "endTime") || "13:00",
     slotLengthMinutes: int(fd, "slotLengthMinutes") || 30,
     mode: str(fd, "mode") || "online",
+    kind: str(fd, "kind") === "break" ? "break" : "open",
     active: bool(fd, "active"),
   };
   if (id) await db.update(availabilityRules).set(values).where(eq(availabilityRules.id, id));

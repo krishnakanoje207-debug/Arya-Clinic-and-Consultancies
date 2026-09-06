@@ -6,9 +6,17 @@ import {
   clearReview,
   confirmAppointment,
   markAppointmentCompleted,
+  rescheduleAppointment,
   saveDoctorNotes,
   saveMeetingLink,
 } from "@/app/admin/actions/appointments";
+
+/** "2026-09-10" + "14:30" as IST wall clock → UTC ISO. IST is a fixed
+ * +05:30 offset with no daylight saving, so the offset can be written
+ * literally and parsed by Date rather than shipping a timezone library. */
+function istWallToIso(date, time) {
+  return new Date(`${date}T${time}:00+05:30`).toISOString();
+}
 
 const STATUS_STYLE = {
   pending_payment: "bg-amber-100 text-amber-800",
@@ -23,6 +31,18 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
   const [open, setOpen] = useState(false);
   const [meetingLink, setMeetingLink] = useState(appt.meetingLink || "");
   const [notes, setNotes] = useState(appt.doctorNotes || "");
+  // Current time as IST wall clock, for the move-appointment inputs.
+  const ist = new Date(
+    new Date(appt.startAt).toLocaleString("en-US", { timeZone: "Asia/Kolkata" }),
+  );
+  const pad = (n) => String(n).padStart(2, "0");
+  const [moveDate, setMoveDate] = useState(
+    `${ist.getFullYear()}-${pad(ist.getMonth() + 1)}-${pad(ist.getDate())}`,
+  );
+  const [moveTime, setMoveTime] = useState(
+    `${pad(ist.getHours())}:${pad(ist.getMinutes())}`,
+  );
+  const movable = ["pending_payment", "confirmed"].includes(appt.status);
 
   function run(fn) {
     startTransition(async () => {
@@ -144,6 +164,47 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
                 >
                   Save link
                 </button>
+
+                {movable && (
+                  <>
+                    <label className="block font-semibold mb-1 mt-4">
+                      Move to another date / time
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        type="date"
+                        value={moveDate}
+                        onChange={(e) => setMoveDate(e.target.value)}
+                        className="rounded border border-[var(--border)] px-2 py-1"
+                      />
+                      <input
+                        type="time"
+                        value={moveTime}
+                        onChange={(e) => setMoveTime(e.target.value)}
+                        className="rounded border border-[var(--border)] px-2 py-1"
+                      />
+                      <button
+                        onClick={() =>
+                          run(() =>
+                            rescheduleAppointment(
+                              appt.id,
+                              istWallToIso(moveDate, moveTime),
+                            ),
+                          )
+                        }
+                        disabled={pending}
+                        className="btn-ghost text-xs py-1 px-3"
+                      >
+                        Move
+                      </button>
+                    </div>
+                    <p className="text-xs text-ink-soft mt-1">
+                      IST. You can move a patient outside your published hours
+                      — only a clash with another live appointment is refused.
+                      The patient is told, and the calendar event follows.
+                    </p>
+                  </>
+                )}
 
                 <label className="block font-semibold mb-1 mt-4">
                   Private consultation notes
