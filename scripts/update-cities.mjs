@@ -84,7 +84,13 @@ for (const r of rows) {
   changes += 1;
   console.log(`settings.${r.key}: needs reordering`);
   if (APPLY) {
-    await sql`update settings set value = ${next} where key = ${r.key}`;
+    // settings.value is jsonb, so the replacement has to go back as encoded
+    // JSON. Writing the bare string makes Postgres try to parse the sentence
+    // itself as JSON and fail on the first word.
+    await sql`
+      update settings set value = ${JSON.stringify(next)}::jsonb
+      where key = ${r.key}
+    `;
     console.log("  updated");
   }
 }
