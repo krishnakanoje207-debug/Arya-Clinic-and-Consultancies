@@ -10,6 +10,7 @@
 
 ALTER TABLE "profile"
   ADD COLUMN "badges" jsonb NOT NULL DEFAULT '[]'::jsonb;
+--> statement-breakpoint
 
 -- Backfill from the degree titles that used to be rendered as the hero chips,
 -- so an existing site keeps showing its BHMS pill without the doctor having to
