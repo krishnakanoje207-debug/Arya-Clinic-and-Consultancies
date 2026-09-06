@@ -34,16 +34,18 @@ const MED_STATUS_STYLE = {
   cancelled: "bg-terracotta text-white",
 };
 
-/* An appointment stays under "Upcoming" until its join window has CLOSED,
-   not the moment it starts. Splitting on startAt moved the card — and its
-   Join button — into "Past" exactly as the consult began, locking the
-   patient out of their own appointment. Deriving the cutoff from
-   joinWindow() keeps this split and the Join gate from ever drifting apart. */
+/* Bucket by TIME ALONE, never by status.
+   Two ways this list used to hide an appointment the patient had paid for:
+   splitting on startAt moved the card — and its Join button — into "Past"
+   the moment the consult began; and filtering on status filed a still-future
+   appointment that had expired or been cancelled under "Past appointments",
+   where nobody looks for a session that has not happened yet. Either way the
+   patient sees an empty "Upcoming", concludes the booking vanished, and pays
+   for the same slot twice. Anything not yet over now stays under Upcoming and
+   shows its real status on the chip. The cutoff comes from joinWindow() so
+   this split and the Join gate can never drift apart. */
 function isUpcoming(a, now) {
-  return (
-    joinWindow(a, now).closesAt >= now &&
-    ["confirmed", "pending_payment"].includes(a.status)
-  );
+  return joinWindow(a, now).closesAt >= now;
 }
 
 export default async function PatientDashboard({ params }) {
