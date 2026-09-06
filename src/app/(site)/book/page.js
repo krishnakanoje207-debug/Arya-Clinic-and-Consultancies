@@ -34,6 +34,7 @@ export default async function BookPage({ searchParams }) {
   // Prefill mode: a valid patient dashboard token (?p=) pre-populates the
   // details form from that patient's record. Fields stay fully editable.
   let prefill = null;
+  let patientToken = null;
   const ptok = tokenSchema.safeParse(sp?.p);
   if (ptok.success) {
     try {
@@ -45,9 +46,13 @@ export default async function BookPage({ searchParams }) {
         })
         .from(patients)
         .where(eq(patients.dashboardToken, ptok.data));
-      if (pt) prefill = { name: pt.name, phone: pt.phone, email: pt.email || "" };
+      if (pt) {
+        prefill = { name: pt.name, phone: pt.phone, email: pt.email || "" };
+        patientToken = ptok.data;
+      }
     } catch {
       prefill = null;
+      patientToken = null;
     }
   }
 
@@ -85,6 +90,7 @@ export default async function BookPage({ searchParams }) {
         preselectServiceId={reschedule?.serviceId ?? preselect}
         reschedule={reschedule}
         prefill={prefill}
+        patientToken={patientToken}
       />
     </div>
   );

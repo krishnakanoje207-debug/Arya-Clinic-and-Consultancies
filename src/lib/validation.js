@@ -24,6 +24,9 @@ export const bookingInputSchema = z.object({
   mode: z.enum(["online", "clinic"]).nullish(),
   startAtIso: z.string().datetime({ offset: true }).or(z.string().datetime()),
   patient: patientSchema,
+  // Dashboard token of the patient booking for themselves, so the new
+  // appointment lands on the record whose magic link they already hold.
+  patientToken: z.string().uuid().nullish(),
 });
 
 /** Intake form: fixed whitelist of case-taking fields, bounded lengths —

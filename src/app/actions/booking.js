@@ -40,12 +40,13 @@ export async function createBookingAction(input) {
   if (!parsed.success) {
     return { ok: false, reason: "missing_details" };
   }
-  const { serviceId, mode, startAtIso, patient } = parsed.data;
+  const { serviceId, mode, startAtIso, patient, patientToken } = parsed.data;
 
   const result = await createBooking({
     serviceId,
     mode,
     startAtIso,
+    patientToken: patientToken || null,
     patient: {
       name: patient.name,
       phone: patient.phone.replace(/[ \-]/g, ""),

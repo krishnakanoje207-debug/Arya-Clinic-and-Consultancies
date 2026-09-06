@@ -5,6 +5,7 @@ import {
   appointments,
   availabilityRules,
   filledSlots,
+  patients,
   services,
   slotOverrides,
 } from "@/db/schema";
@@ -344,7 +345,13 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
  *
  * Returns { ok, appointment? , reason? }.
  */
-export async function createBooking({ serviceId, mode, startAtIso, patient }) {
+export async function createBooking({
+  serviceId,
+  mode,
+  startAtIso,
+  patient,
+  patientToken = null,
+}) {
   const [service] = await db
     .select()
     .from(services)
@@ -392,11 +399,29 @@ export async function createBooking({ serviceId, mode, startAtIso, patient }) {
     );
   if (held >= 2) return { ok: false, reason: "too_many_holds" };
 
-  const patientRow = await upsertPatientForBooking({
-    name: patient.name,
-    phone: patient.phone,
-    email: patient.email,
-  });
+  // A booking made from the patient's own dashboard link is bound to THAT
+  // patient row rather than re-derived from what was typed. Re-deriving it
+  // was how a returning patient could pay for a follow-up and never see it:
+  // any variation in the name or number they entered produced a different
+  // patient record with a different dashboard token, so the magic link they
+  // already had never showed the appointment — and they booked again.
+  // The token is only sent when the patient said the consult is for
+  // themselves, so booking for a relative still creates their own record.
+  let patientRow = null;
+  if (patientToken) {
+    const [known] = await db
+      .select()
+      .from(patients)
+      .where(eq(patients.dashboardToken, patientToken));
+    patientRow = known || null;
+  }
+  if (!patientRow) {
+    patientRow = await upsertPatientForBooking({
+      name: patient.name,
+      phone: patient.phone,
+      email: patient.email,
+    });
+  }
 
   try {
     const [row] = await db

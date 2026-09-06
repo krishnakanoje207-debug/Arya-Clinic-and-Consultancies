@@ -26,6 +26,7 @@ export default function BookingFlow({
   preselectServiceId,
   reschedule = null,
   prefill = null,
+  patientToken = null,
 }) {
   const t = useTranslations();
   const [pending, startTransition] = useTransition();
@@ -140,6 +141,9 @@ export default function BookingFlow({
         mode: effectiveMode,
         startAtIso: slot.startAt,
         patient,
+        // Only when the consult is for this patient themselves — booking for
+        // someone else must create that person's own record, not reuse this one.
+        patientToken: bookingFor === "self" ? patientToken : null,
       });
       if (!res.ok) {
         const msg =
