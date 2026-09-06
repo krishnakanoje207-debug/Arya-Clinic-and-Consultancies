@@ -54,6 +54,15 @@ export async function saveProfile(prevState, fd) {
       const [label, value] = line.split("|").map((x) => x?.trim());
       return { label, value: value || "" };
     });
+  const badges = String(fd.get("badges") || "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [label, labelHi] = line.split("|").map((x) => x?.trim());
+      return { label, label_hi: labelHi || "" };
+    })
+    .filter((b) => b.label);
   const memberships = String(fd.get("memberships") || "")
     .split("\n")
     .map((line) => line.trim())
@@ -70,6 +79,7 @@ export async function saveProfile(prevState, fd) {
     registrationNumber: str(fd, "registrationNumber"),
     registrationCouncil: str(fd, "registrationCouncil"),
     memberships,
+    badges,
     yearsExperience: int(fd, "yearsExperience"),
     heroImage: str(fd, "heroImage"),
     aboutImage: str(fd, "aboutImage"),

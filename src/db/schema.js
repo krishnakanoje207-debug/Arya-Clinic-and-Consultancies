@@ -70,6 +70,7 @@ export const profile = pgTable("profile", {
   registrationNumber: text("registration_number"),
   registrationCouncil: text("registration_council"),
   memberships: jsonb("memberships").notNull().default([]), // ["Member, ..."]
+  badges: jsonb("badges").notNull().default([]), // [{label, label_hi}] — hero pills
   yearsExperience: integer("years_experience"),
   stats: jsonb("stats").notNull().default([]), // [{label, label_hi, value}]
   heroImage: text("hero_image"), // Cloudinary public id / URL

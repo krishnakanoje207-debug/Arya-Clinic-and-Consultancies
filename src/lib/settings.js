@@ -32,10 +32,10 @@ export const SETTINGS_DEFAULTS = {
   home_bg_image: "/photos/clinic-bg.jpg",
   social_links: [],
   consultation_hours:
-    "By appointment · Online (worldwide) and clinic (Nagpur & Pune)",
+    "By appointment · Online (worldwide) and clinic (Pune & Nagpur)",
   seo_title: "ARYA Homoeopathy — Dr. Seema Prajapati (BHMS)",
   seo_description:
-    "Book online homoeopathy consultations with Dr. Seema Prajapati (BHMS), 20 years' experience. Women's health, paediatric, respiratory, skin and lifestyle disorders. Nagpur & Pune, and worldwide online.",
+    "Book online homoeopathy consultations with Dr. Seema Prajapati (BHMS), 20 years' experience. Women's health, paediatric, respiratory, skin and lifestyle disorders. Pune & Nagpur, and worldwide online.",
   medical_disclaimer:
     "Information on this site is for general awareness and is not a substitute for professional medical advice. Individual results vary.",
 };

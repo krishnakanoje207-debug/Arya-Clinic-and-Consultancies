@@ -44,9 +44,10 @@ const DEFAULT_PROFILE = {
   name: "Dr. Seema Prajapati",
   tagline: "Modern & classical homoeopathy — healing starts here",
   taglineHi: "आधुनिक एवं शास्त्रीय होम्योपैथी — यहीं से आरोग्य आरंभ",
-  bio: "Dr. Seema Prajapati (BHMS) is a homoeopathic physician with 20 years of clinical experience, blending modern and classical homoeopathy. Based in Maharashtra, she cares for patients across Nagpur and Pune and offers online consultations worldwide.\n\nShe specialises in women's health — including menstrual problems, uterine fibroids and ovarian cysts — alongside dedicated paediatric care. Over two decades she has developed homoeopathic protocols for chronic respiratory conditions such as asthma, skin diseases, and metabolic and lifestyle disorders including diabetes, obesity and hair loss.",
+  bio: "Dr. Seema Prajapati (BHMS) is a homoeopathic physician with 20 years of clinical experience, blending modern and classical homoeopathy. Based in Maharashtra, she cares for patients across Pune and Nagpur and offers online consultations worldwide.\n\nShe specialises in women's health — including menstrual problems, uterine fibroids and ovarian cysts — alongside dedicated paediatric care. Over two decades she has developed homoeopathic protocols for chronic respiratory conditions such as asthma, skin diseases, and metabolic and lifestyle disorders including diabetes, obesity and hair loss.",
   bioHi:
-    "डॉ. सीमा प्रजापति (BHMS) 20 वर्षों के नैदानिक अनुभव वाली होम्योपैथिक चिकित्सक हैं, जो आधुनिक एवं शास्त्रीय होम्योपैथी का समन्वय करती हैं। महाराष्ट्र में स्थित, वे नागपुर और पुणे में तथा विश्वभर में ऑनलाइन परामर्श प्रदान करती हैं।",
+    "डॉ. सीमा प्रजापति (BHMS) 20 वर्षों के नैदानिक अनुभव वाली होम्योपैथिक चिकित्सक हैं, जो आधुनिक एवं शास्त्रीय होम्योपैथी का समन्वय करती हैं। महाराष्ट्र में स्थित, वे पुणे और नागपुर में तथा विश्वभर में ऑनलाइन परामर्श प्रदान करती हैं।",
+  badges: [{ label: "BHMS", label_hi: "" }],
   degrees: [
     { title: "BHMS", institution: "Bachelor of Homoeopathic Medicine & Surgery", year: "" },
   ],
@@ -57,7 +58,7 @@ const DEFAULT_PROFILE = {
   stats: [
     { label: "Years Experience", label_hi: "वर्षों का अनुभव", value: "20+" },
     { label: "Severe Cases Treated", label_hi: "इलाज किए गए गंभीर मामले", value: "100+" },
-    { label: "In-Clinic & Online Worldwide", label_hi: "क्लिनिक और ऑनलाइन विश्वभर", value: "Nagpur · Pune" },
+    { label: "In-Clinic & Online Worldwide", label_hi: "क्लिनिक और ऑनलाइन विश्वभर", value: "Pune · Nagpur" },
   ],
   heroImage: "/brand/dr-seema.jpeg",
   aboutImage: "/brand/dr-seema.jpeg",

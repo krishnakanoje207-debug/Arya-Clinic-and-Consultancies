@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 import { localized } from "@/lib/content";
+import TestimonialQuote from "@/components/TestimonialQuote";
 
 function Stars({ n }) {
   const count = Math.max(0, Math.min(5, n || 0));
@@ -14,6 +15,8 @@ function Stars({ n }) {
 
 export default async function Testimonials({ testimonials, locale }) {
   const t = await getTranslations("sections");
+  // Reuses the success-story wording rather than duplicating the strings.
+  const st = await getTranslations("stories");
   if (!testimonials?.length) return null;
 
   return (
@@ -34,9 +37,10 @@ export default async function Testimonials({ testimonials, locale }) {
           {testimonials.map((tm) => (
             <blockquote key={tm.id} className="card-warm card-lift p-6">
               {tm.rating ? <Stars n={tm.rating} /> : null}
-              <p className="mt-3 text-ink-soft italic">
-                “{localized(tm, "text", locale)}”
-              </p>
+              <TestimonialQuote
+                text={localized(tm, "text", locale)}
+                labels={{ readMore: st("readMore"), readLess: st("readLess") }}
+              />
               <footer className="mt-4 text-sm font-semibold text-ink">
                 — {tm.patientName}
               </footer>

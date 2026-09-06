@@ -14,10 +14,11 @@ export default async function Hero({ profile, locale, bookFee = null }) {
   const t = await getTranslations("hero");
   const name = profile?.name || "Dr. Seema Prajapati";
   const tagline = localized(profile, "tagline", locale);
-  const degrees = Array.isArray(profile?.degrees) ? profile.degrees : [];
+  const badges = Array.isArray(profile?.badges) ? profile.badges : [];
   // Up to 3 stats; label follows the UI language (label_hi → label).
   const stats = (Array.isArray(profile?.stats) ? profile.stats : []).slice(0, 3);
   const statLabel = (s) => (locale === "hi" && s.label_hi) || s.label || "";
+  const badgeLabel = (b) => (locale === "hi" && b.label_hi) || b.label || "";
 
   return (
     <section className="relative overflow-hidden scroll-mt-28">
@@ -31,29 +32,25 @@ export default async function Hero({ profile, locale, bookFee = null }) {
       <div className="relative mx-auto max-w-7xl px-4 py-16 md:py-24 md:min-h-[68vh] grid md:grid-cols-[1.35fr_0.65fr] gap-10 items-center">
         <div>
           <Reveal>
-            {tagline ? (
-              <p className="text-lg text-sage-deep font-semibold">{tagline}</p>
-            ) : null}
-            <h1 className="mt-3 font-display text-4xl md:text-5xl font-semibold text-ink leading-tight">
-              <span className="title-accent">{name}</span>
-            </h1>
-          </Reveal>
-
-          <Reveal delay={120}>
-            {degrees.length ? (
-              <ul className="mt-4 flex flex-wrap gap-2">
-                {degrees
-                  .map((d) => d.title)
-                  .filter(Boolean)
-                  .map((title, i) => (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <h1 className="font-display text-4xl md:text-5xl font-semibold text-ink leading-tight">
+                <span className="title-accent">{name}</span>
+              </h1>
+              {badges.length ? (
+                <ul className="flex flex-wrap gap-2">
+                  {badges.map((b, i) => (
                     <li
                       key={i}
                       className="rounded-full bg-gold-soft text-sage-deep px-3 py-1 text-xs font-semibold tracking-wide"
                     >
-                      {title}
+                      {badgeLabel(b)}
                     </li>
                   ))}
-              </ul>
+                </ul>
+              ) : null}
+            </div>
+            {tagline ? (
+              <p className="mt-3 text-lg text-sage-deep font-semibold">{tagline}</p>
             ) : null}
           </Reveal>
 

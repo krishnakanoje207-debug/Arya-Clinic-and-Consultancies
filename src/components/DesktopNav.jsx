@@ -8,7 +8,11 @@ import { useEffect, useRef, useState } from "react";
  * reference alignment (structure only; ARYA theme unchanged).
  *
  * Panels open on hover AND on click/Enter (aria-expanded), and close on Esc or
- * a click outside. All content arrives as serializable props from the server
+ * a click outside. Hover-open closes on a short delay so the pointer can cross
+ * the header's padding into the panel without the menu vanishing mid-travel;
+ * a click PINS the panel open (a plain toggle was unusable with a mouse, since
+ * hovering had already opened it and the click only ever closed it again).
+ * All content arrives as serializable props from the server
  * SiteHeader (localized labels + hrefs) — no functions cross the boundary.
  * Mobile keeps the existing MobileNav hamburger; this component is hidden < lg.
  *
@@ -17,13 +21,50 @@ import { useEffect, useRef, useState } from "react";
  */
 export default function DesktopNav({ menus = [], links = [] }) {
   const [openId, setOpenId] = useState(null);
+  // A pinned panel was opened by click and ignores the pointer leaving.
+  const [pinned, setPinned] = useState(false);
   const ref = useRef(null);
+  const closeTimer = useRef(null);
+
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+  };
+  const closeNow = () => {
+    cancelClose();
+    setOpenId(null);
+    setPinned(false);
+  };
+  // Grace period for the gap between the trigger row and the panel.
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpenId(null), 180);
+  };
+
+  useEffect(
+    () => () => {
+      if (closeTimer.current) clearTimeout(closeTimer.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!openId) return;
-    const onKey = (e) => e.key === "Escape" && setOpenId(null);
+    // Inlined rather than reusing closeNow so this effect keeps depending on
+    // openId alone; the timer lives in a ref, so nothing here goes stale.
+    const close = () => {
+      if (closeTimer.current) {
+        clearTimeout(closeTimer.current);
+        closeTimer.current = null;
+      }
+      setOpenId(null);
+      setPinned(false);
+    };
+    const onKey = (e) => e.key === "Escape" && close();
     const onClick = (e) => {
-      if (ref.current && !ref.current.contains(e.target)) setOpenId(null);
+      if (ref.current && !ref.current.contains(e.target)) close();
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("pointerdown", onClick);
@@ -39,15 +80,32 @@ export default function DesktopNav({ menus = [], links = [] }) {
     <nav
       ref={ref}
       className="hidden lg:flex items-center gap-1"
-      onMouseLeave={() => setOpenId(null)}
+      onMouseLeave={() => {
+        if (!pinned) scheduleClose();
+      }}
     >
       {menus.map((m) => (
-        <div key={m.id} onMouseEnter={() => setOpenId(m.id)}>
+        <div
+          key={m.id}
+          onMouseEnter={() => {
+            cancelClose();
+            if (openId !== m.id) setPinned(false);
+            setOpenId(m.id);
+          }}
+        >
           <button
             type="button"
             aria-expanded={openId === m.id}
             aria-haspopup="true"
-            onClick={() => setOpenId((cur) => (cur === m.id ? null : m.id))}
+            onClick={() => {
+              cancelClose();
+              if (openId === m.id && pinned) {
+                closeNow();
+              } else {
+                setOpenId(m.id);
+                setPinned(true);
+              }
+            }}
             className="flex items-center gap-1 px-3 py-2 text-sm text-ink-soft hover:text-sage-deep"
           >
             {m.label}
@@ -84,7 +142,10 @@ export default function DesktopNav({ menus = [], links = [] }) {
           aria-label={active.label}
           className="absolute top-full inset-x-0 z-40"
         >
-          <div className="mt-2 border-y border-[var(--border)] bg-card shadow-xl">
+          <div
+            onMouseEnter={cancelClose}
+            className="border-y border-[var(--border)] bg-card shadow-xl"
+          >
             <div className="mx-auto max-w-7xl px-6 py-8">
               <div className="flex flex-wrap gap-x-12 gap-y-8">
                 {active.columns.map((col) => (
@@ -97,7 +158,7 @@ export default function DesktopNav({ menus = [], links = [] }) {
                         <li key={link.href + link.label}>
                           <Link
                             href={link.href}
-                            onClick={() => setOpenId(null)}
+                            onClick={closeNow}
                             className="block py-2 border-b border-[var(--border)] text-ink-soft hover:text-sage-deep transition"
                           >
                             {link.label}
@@ -112,7 +173,7 @@ export default function DesktopNav({ menus = [], links = [] }) {
                 <div className="mt-6 text-right">
                   <Link
                     href={active.footer.href}
-                    onClick={() => setOpenId(null)}
+                    onClick={closeNow}
                     className="text-sm font-semibold text-sage-deep hover:text-terracotta"
                   >
                     {active.footer.label} →

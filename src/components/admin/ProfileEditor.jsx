@@ -14,6 +14,9 @@ export default function ProfileEditor({ profile }) {
     .map((s) => [s.label, s.value].filter(Boolean).join(" | "))
     .join("\n");
   const membershipsText = (p.memberships || []).join("\n");
+  const badgesText = (p.badges || [])
+    .map((b) => [b.label, b.label_hi].filter(Boolean).join(" | "))
+    .join("\n");
 
   const input = "w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm";
 
@@ -64,6 +67,13 @@ export default function ProfileEditor({ profile }) {
           Degrees — one per line: <code>Title | Institution | Year</code>
         </span>
         <textarea name="degrees" defaultValue={degreesText} rows={3} className={input} />
+      </label>
+      <label className="block sm:col-span-2">
+        <span className="block text-sm font-semibold mb-1">
+          Badges — the pills beside your name in the hero. One per line:{" "}
+          <code>Label | Hindi label</code> (Hindi optional)
+        </span>
+        <textarea name="badges" defaultValue={badgesText} rows={3} className={input} />
       </label>
       <label className="block sm:col-span-2">
         <span className="block text-sm font-semibold mb-1">
