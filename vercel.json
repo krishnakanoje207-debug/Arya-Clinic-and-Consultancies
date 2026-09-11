@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/reminders",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/doctor-digest",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron/doctor-digest",
+      "schedule": "30 14 * * *"
     }
   ]
 }

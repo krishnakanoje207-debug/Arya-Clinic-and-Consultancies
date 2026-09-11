@@ -180,6 +180,53 @@ export async function updateAppointmentEvent(appt) {
 }
 
 /**
+ * Create-or-replace a to-do entry for the doctor (the morning/evening digest,
+ * src/lib/doctor-digest.js) under a caller-chosen event id, so a re-run — a
+ * cron retry or a manual trigger — rewrites the same entry instead of adding a
+ * second one. Timed a few minutes ahead with a popup so her phone alerts, and
+ * marked free so it never blocks her diary. Made as the doctor when her Google
+ * account is connected, else via the service account. Never throws.
+ *
+ * `id` must be Calendar's base32hex alphabet (0-9, a-v), 5–1024 chars.
+ */
+export async function upsertTodoEvent({ id, summary, description, start, minutes = 15 }) {
+  try {
+    if (!calendarConfigured()) return noop();
+    const token = (await getOAuthAccessToken()) || (await getAccessToken(SCOPE));
+    const body = {
+      id,
+      summary,
+      description,
+      start: { dateTime: start.toISOString(), timeZone: IST_ZONE },
+      end: {
+        dateTime: new Date(start.getTime() + minutes * 60000).toISOString(),
+        timeZone: IST_ZONE,
+      },
+      reminders: { useDefault: false, overrides: [{ method: "popup", minutes: 0 }] },
+      transparency: "transparent",
+      colorId: "5",
+    };
+    const headers = { authorization: `Bearer ${token}`, "content-type": "application/json" };
+    const base = `https://www.googleapis.com/calendar/v3/calendars/${calId()}/events`;
+    let res = await fetch(base, { method: "POST", headers, body: JSON.stringify(body) });
+    // 409 = the id is already taken (a re-run, or an entry she deleted):
+    // replace it in full, reviving it if it was deleted.
+    if (res.status === 409) {
+      res = await fetch(`${base}/${encodeURIComponent(id)}`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ ...body, status: "confirmed" }),
+      });
+    }
+    if (!res.ok) throw new Error(`Calendar to-do: ${res.status} ${await res.text()}`);
+    return { ok: true, id };
+  } catch (err) {
+    console.error("[gcal] to-do failed:", err?.message || err);
+    return { ok: false, error: String(err?.message || err) };
+  }
+}
+
+/**
  * Delete the event on cancellation. Ignores 404/410 (already gone). Clears the
  * stored id. Never throws.
  */
