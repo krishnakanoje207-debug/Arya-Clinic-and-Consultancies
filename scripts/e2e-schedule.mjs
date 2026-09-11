@@ -123,6 +123,16 @@ try {
   });
   log(adminDay.slots.length > 0 && adminInBreak.length === 0,
     `admin grid offers no slot inside the break (${adminDay.slots.length} slots)`);
+  const publicStarts = new Set(today.slots.map((s) => s.startAt));
+  log(
+    adminDay.slots.length === today.slots.length &&
+      adminDay.slots.every((s) => publicStarts.has(s.startAt)),
+    `admin grid offers exactly the public slot times, buffer included`,
+  );
+  const adminNeighbour = adminDay.slots.find((s) => mins(s.startAt) === 10 * 60 + SLOT + BUF);
+  const adminBooked = adminDay.slots.find((s) => mins(s.startAt) === 10 * 60);
+  log(adminBooked?.booked && adminNeighbour && !adminNeighbour.booked,
+    `admin grid: the booked slot shows booked, the next one (one buffer later) stays markable`);
 
   // --- "available only these hours" replaces the weekly hours for one date ---
   // Same weekday a week later, so the 10:00–16:00 rule and 12–13 break apply.

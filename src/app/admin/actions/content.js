@@ -315,7 +315,6 @@ export async function upsertOverride(prevState, fd) {
     kind: str(fd, "kind") || "blocked",
     startTime: str(fd, "startTime"),
     endTime: str(fd, "endTime"),
-    slotLengthMinutes: int(fd, "slotLengthMinutes"),
     mode: str(fd, "mode"),
     note: str(fd, "note"),
   };

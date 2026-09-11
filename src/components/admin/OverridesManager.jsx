@@ -70,10 +70,6 @@ export default function OverridesManager({ overrides }) {
           <input type="time" name="endTime" className={input} />
         </label>
         <label className="block">
-          <span className="block text-sm font-semibold mb-1">Slot length (for extra)</span>
-          <input type="number" name="slotLengthMinutes" className={input} />
-        </label>
-        <label className="block">
           <span className="block text-sm font-semibold mb-1">Mode (blank = both)</span>
           <select name="mode" className={input}>
             <option value="">Both</option>

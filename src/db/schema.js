@@ -126,7 +126,9 @@ export const slotOverrides = pgTable("slot_overrides", {
   kind: overrideKind("kind").notNull(),
   startTime: time("start_time"), // IST wall clock, null = whole day
   endTime: time("end_time"),
-  slotLengthMinutes: integer("slot_length_minutes"), // for "extra" rows
+  // Vestigial: slot length is always the booked service's duration. Column
+  // kept (nullable) but no longer written — the admin field was removed.
+  slotLengthMinutes: integer("slot_length_minutes"),
   mode: consultationMode("mode"), // null = applies to both modes
   note: text("note"),
 });

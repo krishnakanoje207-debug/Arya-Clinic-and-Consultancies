@@ -102,8 +102,8 @@ try {
   const durMs = svc.duration_minutes * 60000;
 
   const [pat] = await sql`
-    insert into patients (name, phone) values ('E2E Razorpay', ${NORM})
-    on conflict (phone) do update set name = excluded.name, updated_at = now()
+    insert into patients (name, name_key, phone) values ('E2E Razorpay', 'e2e razorpay', ${NORM})
+    on conflict (phone, name_key) do update set name = excluded.name, updated_at = now()
     returning id, dashboard_token`;
   log(!!pat, `upserted patient #${pat?.id}`);
 

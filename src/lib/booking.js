@@ -269,10 +269,13 @@ export async function getServiceCalendar(serviceId, { mode, days } = {}) {
 
 /**
  * Generate one IST day's slot grid for the admin "Filled slots" manager. Same
- * derivation as getServiceCalendar for a single date, but each slot carries its
- * exact state: booked (overlaps a real active appointment — not toggleable) or
- * filled (overlaps an admin-marked filled_slots row — toggleable off). Past and
- * whole-day-blocked handling mirrors the public calendar.
+ * derivation as getServiceCalendar for a single date — same windows, same
+ * duration + buffer stepping, so the doctor marks exactly the times patients
+ * see — but each slot carries its state: booked (a real active appointment
+ * overlaps it, buffer included, exactly as the public grid decides "Booked" —
+ * not toggleable) or filled (overlaps an admin-marked filled_slots row —
+ * toggleable off; exact overlap, since that is what unmarking deletes). Past
+ * and whole-day-blocked handling mirrors the public calendar.
  */
 export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
   const [service] = await db
@@ -284,6 +287,11 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
   const targetMode = mode || (service.mode === "clinic" ? "clinic" : "online");
   const slotLen = service.durationMinutes;
   const wd = istWeekday(dateStr);
+  const { slot_buffer_minutes: bufferSetting } = await getSettings([
+    "slot_buffer_minutes",
+  ]);
+  const buffer = Math.max(0, Number(bufferSetting) || 0);
+  const pad = buffer * 60000;
 
   const rules = await db
     .select()
@@ -317,12 +325,12 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
 
   const slots = [];
   for (const [ps, pe] of windows) {
-    for (let s = ps; s + slotLen <= pe; s += slotLen) {
+    for (let s = ps; s + slotLen <= pe; s += slotLen + buffer) {
       const startUtc = istMinutesToUtc(dateStr, s);
       const endUtc = istMinutesToUtc(dateStr, s + slotLen);
       const sMs = startUtc.getTime();
       const eMs = endUtc.getTime();
-      const overlaps = (r) => r.some(([as, ae]) => sMs < ae && as < eMs);
+      const overlaps = (r, p = 0) => r.some(([as, ae]) => sMs < ae + p && as - p < eMs);
       slots.push({
         startAt: startUtc.toISOString(),
         endAt: endUtc.toISOString(),
@@ -331,7 +339,7 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
           " – " +
           DateTime.fromJSDate(endUtc).setZone(IST_ZONE).toFormat("hh:mm a"),
         past: sMs <= now,
-        booked: overlaps(activeRanges),
+        booked: overlaps(activeRanges, pad),
         filled: overlaps(filledRanges),
       });
     }
