@@ -235,6 +235,14 @@ async function seedPlaceholderShowcase() {
       .onConflictDoNothing();
 }
 
+/** SMS only: the rupee sign and en/em dashes are outside GSM-7, and a single
+ * such character forces the WHOLE message into UCS-2 — 67 characters per
+ * segment instead of 153, which roughly doubles the segment count (and the
+ * cost) of every message that mentions a price. Email keeps the proper
+ * typography. Mirrored by scripts/update-templates-gsm7.mjs for databases
+ * that were seeded before this existed. */
+const gsm7 = (s) => s.replace(/₹/g, "Rs.").replace(/[—–]/g, "-");
+
 /** Seven booking-event templates × two channels (email + sms). Placeholders
  * like {patient_name} are filled by the notification adapter.
  *
@@ -262,7 +270,7 @@ async function seedTemplates() {
       .onConflictDoNothing();
     await db
       .insert(messageTemplates)
-      .values({ event, channel: "sms", subject: null, body })
+      .values({ event, channel: "sms", subject: null, body: gsm7(body) })
       .onConflictDoNothing();
   }
 }
