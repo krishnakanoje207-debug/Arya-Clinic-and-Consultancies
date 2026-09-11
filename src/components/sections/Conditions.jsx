@@ -56,7 +56,12 @@ export default async function Conditions() {
                   />
                   <div
                     aria-hidden="true"
-                    className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/25 to-transparent transition-colors duration-500 group-hover:from-ink/90 group-hover:via-ink/55 group-focus:from-ink/90 group-focus:via-ink/55"
+                    /* Two cards per row on a phone leaves each name ~165px
+                       wide, so the longer ones wrap to four lines and climb
+                       out of the dark end of the scrim — white text over a
+                       pale photo. Carrying some ink all the way to the top
+                       keeps them readable at every card width. */
+                    className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/50 to-ink/15 transition-colors duration-500 group-hover:from-ink/90 group-hover:via-ink/60 group-focus:from-ink/90 group-focus:via-ink/60"
                   />
                   <div className="absolute inset-0 p-5 flex flex-col justify-end text-white">
                     <h3 className="font-display text-lg font-semibold drop-shadow-sm">

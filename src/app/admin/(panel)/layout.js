@@ -89,7 +89,12 @@ export default async function AdminPanelLayout({ children }) {
             </form>
           </div>
         </aside>
-        <main className="flex-1 p-6">{children}</main>
+        {/* min-w-0: a flex item defaults to min-width:auto, so without this
+            `main` refuses to shrink below its widest table and the page itself
+            scrolls sideways on a phone (availability was 577px at a 390px
+            viewport). With it, the overflow-x-auto wrappers around the tables
+            do their job instead. */}
+        <main className="flex-1 min-w-0 p-4 sm:p-6">{children}</main>
       </div>
     </div>
   );

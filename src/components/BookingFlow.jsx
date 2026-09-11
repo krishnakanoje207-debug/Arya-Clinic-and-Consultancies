@@ -191,7 +191,9 @@ export default function BookingFlow({
               value={serviceId || ""}
               onChange={(e) => setServiceId(Number(e.target.value))}
               disabled={Boolean(reschedule)}
-              className="w-full rounded-lg border border-[var(--border)] px-3 py-2"
+              // pr-9 keeps the longest service label clear of the native
+              // dropdown arrow, which sat on top of it at phone widths.
+              className="w-full rounded-lg border border-[var(--border)] pl-3 pr-9 py-2 min-h-11"
             >
               {services.map((s) => (
                 <option key={s.id} value={s.id}>
@@ -200,6 +202,13 @@ export default function BookingFlow({
                 </option>
               ))}
             </select>
+            {/* A closed select shows one line, and at phone widths the label is
+                cut before the fee ("₹500" read as "₹50"). Repeat it in full. */}
+            {service && (
+              <p className="mt-2 text-sm text-ink-soft">
+                ₹{service.feeInr} · {service.durationMinutes} {t("services.minutes")}
+              </p>
+            )}
           </div>
 
           {needsModeChoice && (
@@ -213,7 +222,7 @@ export default function BookingFlow({
                     key={m}
                     type="button"
                     onClick={() => setMode(m)}
-                    className={`px-4 py-2 rounded-full border text-sm ${
+                    className={`px-4 py-2 min-h-11 rounded-full border text-sm ${
                       effectiveMode === m
                         ? "bg-sage text-white border-sage"
                         : "border-[var(--border)] text-ink-soft"
@@ -250,7 +259,7 @@ export default function BookingFlow({
                               setSlot(null);
                             }}
                             disabled={!has}
-                            className={`shrink-0 px-3 py-2 rounded-lg border text-xs ${
+                            className={`shrink-0 px-3 py-2 min-h-11 rounded-lg border text-xs ${
                               activeDate === d.date
                                 ? "bg-sage text-white border-sage"
                                 : has
@@ -286,7 +295,7 @@ export default function BookingFlow({
                               ? t("booking.booked")
                               : t("booking.unavailable")
                         }
-                        className={`px-2 py-2 rounded-lg border text-sm ${
+                        className={`px-2 py-2 min-h-11 rounded-lg border text-sm ${
                           slot?.startAt === s.startAt
                             ? "bg-terracotta text-white border-terracotta"
                             : s.available
@@ -346,7 +355,7 @@ export default function BookingFlow({
                       {["self", "other"].map((v) => (
                         <label
                           key={v}
-                          className="flex items-center gap-2 text-sm text-ink"
+                          className="flex items-center gap-2 min-h-11 text-sm text-ink"
                         >
                           <input
                             type="radio"

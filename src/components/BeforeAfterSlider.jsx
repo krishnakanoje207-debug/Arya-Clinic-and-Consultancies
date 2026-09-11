@@ -50,7 +50,7 @@ export default function BeforeAfterSlider({ before, after, alt }) {
         value={pos}
         onChange={(e) => setPos(Number(e.target.value))}
         aria-label="Reveal before and after"
-        className="absolute inset-x-0 bottom-3 mx-auto w-[85%] accent-terracotta"
+        className="slider-touch absolute inset-x-0 bottom-1 mx-auto h-11 w-[85%] cursor-pointer"
       />
       <div className="absolute top-2 left-2 text-[10px] uppercase tracking-wide bg-black/40 text-white px-2 py-0.5 rounded">
         Before
