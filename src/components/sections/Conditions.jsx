@@ -37,7 +37,9 @@ export default async function Conditions() {
         </h2>
         <p className="mt-4 text-ink-soft max-w-2xl">{t("subtitle")}</p>
 
-        <ul className="mt-10 grid gap-6 grid-cols-2 lg:grid-cols-4">
+        {/* Phones: one swipe row of narrower arch cards (62%) so the photo
+            cards stay a sensible height; tablet 2 columns, desktop 4. */}
+        <ul className="swipe-row [--swipe-card:62%] mt-10 grid gap-4 md:gap-6 grid-cols-2 lg:grid-cols-4">
           {items.map((c) => {
             const name = localized(c, "name", locale);
             const blurb = blurbOf(localized(c, "intro", locale));
@@ -51,7 +53,7 @@ export default async function Conditions() {
                     src={conditionImage(c)}
                     alt=""
                     fill
-                    sizes="(min-width:1024px) 25vw, 50vw"
+                    sizes="(min-width:1024px) 25vw, (min-width:768px) 50vw, 62vw"
                     className="object-cover transition duration-500 group-hover:blur-[3px] group-hover:scale-105 group-focus:blur-[3px] group-focus:scale-105"
                   />
                   <div

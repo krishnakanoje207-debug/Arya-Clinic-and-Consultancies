@@ -12,7 +12,7 @@ export default async function Services({ services, locale }) {
         <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8">
           <span className="title-accent">{t("sections.servicesTitle")}</span>
         </h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="swipe-row grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {services.map((s) => (
             <div key={s.id} className="card-warm card-lift p-6 flex flex-col">
               <h3 className="font-display text-xl text-ink font-semibold">

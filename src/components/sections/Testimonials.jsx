@@ -33,7 +33,7 @@ export default async function Testimonials({ testimonials, locale }) {
             {t("viewAll")} →
           </Link>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="swipe-row grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {testimonials.map((tm) => (
             <blockquote key={tm.id} className="card-warm card-lift p-6">
               {tm.rating ? <Stars n={tm.rating} /> : null}

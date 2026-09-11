@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import BeforeAfterSlider from "@/components/BeforeAfterSlider";
 
 /**
@@ -23,6 +23,24 @@ export default function SuccessStoriesSlider({ items, labels }) {
     setI((cur) => (cur + delta + n) % n);
   };
 
+  // Swipe the quote panel sideways for the next/previous story. Only the
+  // panel listens — the photo's before/after reveal is itself a sideways drag.
+  // A mostly-vertical gesture is a page scroll and is left alone.
+  const touch = useRef(null);
+  const onTouchStart = (e) => {
+    const p = e.touches[0];
+    touch.current = { x: p.clientX, y: p.clientY };
+  };
+  const onTouchEnd = (e) => {
+    const start = touch.current;
+    touch.current = null;
+    if (!start || n < 2) return;
+    const p = e.changedTouches[0];
+    const dx = p.clientX - start.x;
+    const dy = p.clientY - start.y;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5) go(dx < 0 ? 1 : -1);
+  };
+
   const rows = [
     [labels.condition, c.condition],
     [labels.duration, c.duration],
@@ -32,18 +50,22 @@ export default function SuccessStoriesSlider({ items, labels }) {
   const longDesc = (c.description || "").length > 180;
 
   return (
-    <div className="grid gap-8 md:grid-cols-2 items-start">
+    <div className="grid gap-4 md:gap-8 md:grid-cols-2 items-start">
       {/* Left — before / after */}
       <div>
         <BeforeAfterSlider before={c.before} after={c.after} alt={c.condition} />
         <p className="mt-2 text-xs text-ink-soft">{labels.realImages}</p>
       </div>
 
-      {/* Right — quote panel */}
-      <div className="card-warm p-7 flex flex-col relative">
+      {/* Right — quote panel (tighter on phones) */}
+      <div
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        className="card-warm p-5 md:p-7 flex flex-col relative"
+      >
         <span
           aria-hidden="true"
-          className="font-display text-6xl leading-none text-gold/70 select-none"
+          className="font-display text-4xl md:text-6xl leading-none text-gold/70 select-none"
         >
           &ldquo;
         </span>
@@ -79,7 +101,7 @@ export default function SuccessStoriesSlider({ items, labels }) {
         ) : null}
 
         {n > 1 ? (
-          <div className="mt-6 flex justify-end gap-3">
+          <div className="mt-4 md:mt-6 flex justify-end gap-3">
             <button
               type="button"
               onClick={() => go(-1)}

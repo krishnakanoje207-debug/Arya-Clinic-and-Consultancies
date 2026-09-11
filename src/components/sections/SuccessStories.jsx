@@ -34,8 +34,8 @@ export default async function SuccessStories({ cases, locale }) {
 
   return (
     <section id="stories" className="bg-cream scroll-mt-28">
-      <div className="mx-auto max-w-7xl px-4 py-16">
-        <div className="text-center max-w-3xl mx-auto mb-10">
+      <div className="mx-auto max-w-7xl px-4 py-12 md:py-16">
+        <div className="text-center max-w-3xl mx-auto mb-6 md:mb-10">
           <h2 className="font-display text-3xl text-sage-deep font-semibold">
             <span className="title-accent">{t("stories.title")}</span>
           </h2>
@@ -44,7 +44,7 @@ export default async function SuccessStories({ cases, locale }) {
 
         <SuccessStoriesSlider items={items} labels={labels} />
 
-        <div className="mt-10 text-center">
+        <div className="mt-8 md:mt-10 text-center">
           <Link href="/testimonials" className="btn-ghost inline-block">
             {t("stories.viewAll")} →
           </Link>

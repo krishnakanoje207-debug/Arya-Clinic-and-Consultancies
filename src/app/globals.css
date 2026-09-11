@@ -249,6 +249,36 @@ details.faq-item .faq-answer { animation: fade-up 0.35s ease both; }
   box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
 }
 
+/* Phone-only swipe row: below md a card grid becomes one horizontal row that
+   snaps card by card, with the next card peeking in so it reads as swipeable.
+   Tablet and up keep the element's own grid classes. This sits outside any
+   @layer, so it beats Tailwind's `grid` utility without !important. The row
+   bleeds to the screen edges (-1rem against the section's px-4) and keeps
+   some block padding because overflow-x clips card shadows and hover lift.
+   Card width: --swipe-card on the row (default 82%).
+   position:relative matters: overflow only clips absolutely positioned
+   descendants whose containing block is inside the row. Without it the
+   service cards' sr-only labels, sitting on off-screen cards, escaped the
+   clip and widened the whole page to ~1050px on a phone. */
+@media (max-width: 47.99rem) {
+  .swipe-row {
+    position: relative;
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    margin-inline: -1rem;
+    padding: 0.5rem 1rem 1rem;
+    scroll-padding-inline: 1rem;
+    scrollbar-width: none;
+  }
+  .swipe-row::-webkit-scrollbar { display: none; }
+  .swipe-row > * {
+    flex: 0 0 var(--swipe-card, 82%);
+    scroll-snap-align: start;
+  }
+}
+
 /* ---------- Accessibility ---------- */
 
 @media (prefers-reduced-motion: reduce) {

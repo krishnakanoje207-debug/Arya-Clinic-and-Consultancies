@@ -15,7 +15,7 @@ export default async function WhyArya() {
         <h2 className="font-display text-3xl text-sage-deep font-semibold mb-8 text-center">
           <span className="title-accent">{t("title")}</span>
         </h2>
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="swipe-row grid gap-6 md:grid-cols-3">
           {items.map((it, i) => (
             <div key={i} className="card-warm card-lift p-6">
               <div
