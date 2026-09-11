@@ -51,6 +51,36 @@ function subtractRanges(windowStart, windowEnd, blocked) {
 }
 
 /**
+ * The bookable [start,end) windows (IST minutes) for one date, before any
+ * bookings are considered. Base hours are the weekday's open rules — or, when
+ * the date carries "only" overrides ("available only these hours"), just
+ * those, replacing the weekly hours for that day. "extra" overrides add to the
+ * base; partial "blocked" overrides and recurring weekly breaks are carved out
+ * of it. A whole-day block closes the day outright.
+ *
+ * Shared by the public calendar and the admin filled-slots grid so the two can
+ * never disagree about which hours exist (they had: the admin grid used break
+ * rules as open hours).
+ */
+function dayWindows(wd, rules, dayOverrides) {
+  if (dayOverrides.some((o) => o.kind === "blocked" && !o.startTime)) return [];
+  const range = (x) => [timeToMinutes(x.startTime), timeToMinutes(x.endTime)];
+  const timed = (kind) =>
+    dayOverrides.filter((o) => o.kind === kind && o.startTime && o.endTime);
+
+  const only = timed("only");
+  const base = only.length
+    ? only.map(range)
+    : rules.filter((r) => r.kind !== "break" && r.weekday === wd).map(range);
+  const windows = [...base, ...timed("extra").map(range)];
+  const carved = [
+    ...timed("blocked").map(range),
+    ...rules.filter((r) => r.kind === "break" && r.weekday === wd).map(range),
+  ];
+  return windows.flatMap(([ws, we]) => subtractRanges(ws, we, carved));
+}
+
+/**
  * Lazily expire stale holds: any pending_payment row whose 15-minute hold
  * has lapsed becomes 'expired', so it stops blocking the exclusion
  * constraint and disappears from availability. Runs opportunistically on
@@ -196,69 +226,38 @@ export async function getServiceCalendar(serviceId, { mode, days } = {}) {
     const wd = istWeekday(dateStr);
     const dayOverrides = overrides.filter((o) => o.onDate === dateStr);
 
-    // Whole-day block (blocked override with no start_time) closes the day.
-    const fullBlock = dayOverrides.some(
-      (o) => o.kind === "blocked" && !o.startTime,
-    );
-    if (fullBlock) {
-      out.push({ date: dateStr, weekday: wd, slots: [] });
-      continue;
-    }
-
-    const blockedRanges = [
-      ...dayOverrides
-        .filter((o) => o.kind === "blocked" && o.startTime && o.endTime)
-        .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]),
-      // Recurring weekly breaks (lunch) are carved out of every matching day.
-      ...rules
-        .filter((r) => r.kind === "break" && r.weekday === wd)
-        .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
-    ];
-
-    // Base windows = weekly OPEN rules for this weekday + any "extra" overrides.
-    const windows = [
-      ...rules
-        .filter((r) => r.kind !== "break" && r.weekday === wd)
-        .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
-      ...dayOverrides
-        .filter((o) => o.kind === "extra" && o.startTime && o.endTime)
-        .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]),
-    ];
-
     const slots = [];
-    for (const [ws, we] of windows) {
-      for (const [ps, pe] of subtractRanges(ws, we, blockedRanges)) {
-        // Step by the consultation length PLUS the buffer, so consecutive
-        // offers are never back to back.
-        for (let s = ps; s + slotLen <= pe; s += slotLen + buffer) {
-          const startUtc = istMinutesToUtc(dateStr, s);
-          const endUtc = istMinutesToUtc(dateStr, s + slotLen);
-          const sMs = startUtc.getTime();
-          const eMs = endUtc.getTime();
-          const isPast = sMs <= now;
-          // Taken ranges are widened by the buffer on both sides. Stepping
-          // alone only spaces slots within one service's grid; a service of a
-          // different duration would otherwise still offer a slot butting up
-          // against an existing appointment.
-          const pad = buffer * 60000;
-          const isTaken = takenRanges.some(
-            ([as, ae]) => sMs < ae + pad && as - pad < eMs,
-          );
-          slots.push({
-            startAt: startUtc.toISOString(),
-            endAt: endUtc.toISOString(),
-            label:
-              DateTime.fromJSDate(startUtc)
-                .setZone(IST_ZONE)
-                .toFormat("hh:mm a") +
-              " – " +
-              DateTime.fromJSDate(endUtc)
-                .setZone(IST_ZONE)
-                .toFormat("hh:mm a"),
-            available: !isPast && !isTaken,
-            taken: isTaken,
-          });
-        }
+    for (const [ps, pe] of dayWindows(wd, rules, dayOverrides)) {
+      // Step by the consultation length PLUS the buffer, so consecutive
+      // offers are never back to back.
+      for (let s = ps; s + slotLen <= pe; s += slotLen + buffer) {
+        const startUtc = istMinutesToUtc(dateStr, s);
+        const endUtc = istMinutesToUtc(dateStr, s + slotLen);
+        const sMs = startUtc.getTime();
+        const eMs = endUtc.getTime();
+        const isPast = sMs <= now;
+        // Taken ranges are widened by the buffer on both sides. Stepping
+        // alone only spaces slots within one service's grid; a service of a
+        // different duration would otherwise still offer a slot butting up
+        // against an existing appointment.
+        const pad = buffer * 60000;
+        const isTaken = takenRanges.some(
+          ([as, ae]) => sMs < ae + pad && as - pad < eMs,
+        );
+        slots.push({
+          startAt: startUtc.toISOString(),
+          endAt: endUtc.toISOString(),
+          label:
+            DateTime.fromJSDate(startUtc)
+              .setZone(IST_ZONE)
+              .toFormat("hh:mm a") +
+            " – " +
+            DateTime.fromJSDate(endUtc)
+              .setZone(IST_ZONE)
+              .toFormat("hh:mm a"),
+          available: !isPast && !isTaken,
+          taken: isTaken,
+        });
       }
     }
     slots.sort((a, b) => a.startAt.localeCompare(b.startAt));
@@ -305,20 +304,8 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
       ),
     );
 
-  const fullBlock = dayOverrides.some((o) => o.kind === "blocked" && !o.startTime);
-  if (fullBlock) return { service, mode: targetMode, slots: [] };
-
-  const blockedRanges = dayOverrides
-    .filter((o) => o.kind === "blocked" && o.startTime && o.endTime)
-    .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]);
-  const windows = [
-    ...rules
-      .filter((r) => r.weekday === wd)
-      .map((r) => [timeToMinutes(r.startTime), timeToMinutes(r.endTime)]),
-    ...dayOverrides
-      .filter((o) => o.kind === "extra" && o.startTime && o.endTime)
-      .map((o) => [timeToMinutes(o.startTime), timeToMinutes(o.endTime)]),
-  ];
+  const windows = dayWindows(wd, rules, dayOverrides);
+  if (!windows.length) return { service, mode: targetMode, slots: [] };
 
   const fromUtc = istMinutesToUtc(dateStr, 0);
   const toUtc = istMinutesToUtc(dateStr, 24 * 60);
@@ -329,26 +316,24 @@ export async function getAdminDaySlots({ serviceId, mode, dateStr }) {
   const now = nowUtc().getTime();
 
   const slots = [];
-  for (const [ws, we] of windows) {
-    for (const [ps, pe] of subtractRanges(ws, we, blockedRanges)) {
-      for (let s = ps; s + slotLen <= pe; s += slotLen) {
-        const startUtc = istMinutesToUtc(dateStr, s);
-        const endUtc = istMinutesToUtc(dateStr, s + slotLen);
-        const sMs = startUtc.getTime();
-        const eMs = endUtc.getTime();
-        const overlaps = (r) => r.some(([as, ae]) => sMs < ae && as < eMs);
-        slots.push({
-          startAt: startUtc.toISOString(),
-          endAt: endUtc.toISOString(),
-          label:
-            DateTime.fromJSDate(startUtc).setZone(IST_ZONE).toFormat("hh:mm a") +
-            " – " +
-            DateTime.fromJSDate(endUtc).setZone(IST_ZONE).toFormat("hh:mm a"),
-          past: sMs <= now,
-          booked: overlaps(activeRanges),
-          filled: overlaps(filledRanges),
-        });
-      }
+  for (const [ps, pe] of windows) {
+    for (let s = ps; s + slotLen <= pe; s += slotLen) {
+      const startUtc = istMinutesToUtc(dateStr, s);
+      const endUtc = istMinutesToUtc(dateStr, s + slotLen);
+      const sMs = startUtc.getTime();
+      const eMs = endUtc.getTime();
+      const overlaps = (r) => r.some(([as, ae]) => sMs < ae && as < eMs);
+      slots.push({
+        startAt: startUtc.toISOString(),
+        endAt: endUtc.toISOString(),
+        label:
+          DateTime.fromJSDate(startUtc).setZone(IST_ZONE).toFormat("hh:mm a") +
+          " – " +
+          DateTime.fromJSDate(endUtc).setZone(IST_ZONE).toFormat("hh:mm a"),
+        past: sMs <= now,
+        booked: overlaps(activeRanges),
+        filled: overlaps(filledRanges),
+      });
     }
   }
   slots.sort((a, b) => a.startAt.localeCompare(b.startAt));

@@ -39,6 +39,7 @@ export const availabilityKind = pgEnum("availability_kind", ["open", "break"]);
 export const overrideKind = pgEnum("override_kind", [
   "blocked", // holiday / blocked date or slot range
   "extra", // additional hours outside the weekly template
+  "only", // the only hours that day — replaces the weekly template for that date
 ]);
 
 export const researchType = pgEnum("research_type", [

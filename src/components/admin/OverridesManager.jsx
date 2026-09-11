@@ -5,6 +5,12 @@ import { deleteOverride, upsertOverride } from "@/app/admin/actions/content";
 
 const input = "w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm";
 
+const KIND_LABEL = {
+  blocked: "Blocked",
+  extra: "Extra hours",
+  only: "Only these hours",
+};
+
 export default function OverridesManager({ overrides }) {
   const [state, action, pending] = useActionState(upsertOverride, null);
   const [isDeleting, startDelete] = useTransition();
@@ -23,7 +29,7 @@ export default function OverridesManager({ overrides }) {
           {overrides.map((o) => (
             <li key={o.id} className="py-2 flex justify-between items-center">
               <span>
-                <strong>{o.onDate}</strong> · {o.kind}
+                <strong>{o.onDate}</strong> · {KIND_LABEL[o.kind] || o.kind}
                 {o.startTime ? ` ${o.startTime}–${o.endTime}` : " (whole day)"}
                 {o.mode ? ` · ${o.mode}` : ""}
                 {o.note ? ` — ${o.note}` : ""}
@@ -51,6 +57,7 @@ export default function OverridesManager({ overrides }) {
           <span className="block text-sm font-semibold mb-1">Kind</span>
           <select name="kind" className={input}>
             <option value="blocked">Blocked (holiday / closed)</option>
+            <option value="only">Available only these hours</option>
             <option value="extra">Extra hours</option>
           </select>
         </label>
@@ -90,6 +97,13 @@ export default function OverridesManager({ overrides }) {
       <p className="mt-3 text-xs text-ink-soft">
         A blocked override with no start time closes the whole day. Leave times
         empty for full-day holidays.
+      </p>
+      <p className="mt-1 text-xs text-ink-soft">
+        <strong>Available only these hours</strong>: for a day you can give only
+        part of your time. Enter the start and end — that day offers just this
+        window instead of your weekly hours. Add another row for a second window
+        on the same day. Your breaks and the gap between consultations still
+        apply.
       </p>
     </div>
   );

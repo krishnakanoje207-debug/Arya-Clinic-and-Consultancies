@@ -320,6 +320,19 @@ export async function upsertOverride(prevState, fd) {
     note: str(fd, "note"),
   };
   if (!values.onDate) return { ok: false, error: "Date required" };
+  if (!["blocked", "extra", "only"].includes(values.kind)) {
+    return { ok: false, error: "Unknown kind" };
+  }
+  // Extra and only-these-hours rows are windows; without both times the
+  // calendar would silently ignore them.
+  if (values.kind !== "blocked") {
+    if (!values.startTime || !values.endTime) {
+      return { ok: false, error: "Start and end time required" };
+    }
+    if (values.startTime >= values.endTime) {
+      return { ok: false, error: "End time must be after start time" };
+    }
+  }
   await db.insert(slotOverrides).values(values);
   revalidatePath("/admin/availability");
   return { ok: true };
