@@ -402,5 +402,30 @@
     "tools": "स्व-मूल्यांकन उपकरण",
     "clinicInfo": "क्लिनिक जानकारी",
     "googleReview": "Google पर हमें रेटिंग दें"
+  },
+  "receipt": {
+    "consultationTitle": "परामर्श भुगतान रसीद",
+    "medicineTitle": "दवा भुगतान रसीद",
+    "number": "रसीद संख्या",
+    "paymentDate": "भुगतान की तारीख़",
+    "patient": "रोगी",
+    "service": "परामर्श",
+    "appointment": "अपॉइंटमेंट",
+    "mode": "माध्यम",
+    "medicines": "दवाएँ",
+    "supply": "अवधि",
+    "shipTo": "भेजने का पता",
+    "dispatch": "प्रेषण",
+    "dispatchedOn": "क्लिनिक द्वारा {date} को भेजी गईं",
+    "toBeDispatched": "क्लिनिक द्वारा भेजी जाएँगी",
+    "courierRef": "कूरियर संदर्भ",
+    "amountPaid": "भुगतान की गई राशि",
+    "paymentMethod": "भुगतान का माध्यम",
+    "online": "ऑनलाइन भुगतान (Razorpay)",
+    "paymentId": "भुगतान आईडी",
+    "regNo": "पंजीकरण सं.",
+    "print": "प्रिंट करें / PDF के रूप में सहेजें",
+    "computerGenerated": "यह कंप्यूटर द्वारा बनाई गई रसीद है और इस पर हस्ताक्षर की आवश्यकता नहीं है।",
+    "button": "रसीद"
   }
 }

@@ -9,6 +9,11 @@ import { tokenSchema } from "@/lib/validation";
 import { listOrdersForPatient } from "@/lib/medications";
 import { canJoin, joinWindow } from "@/lib/meeting";
 import { reviewExistsForPatient } from "@/lib/reviews";
+import {
+  consultationHasReceipt,
+  medicineHasReceipt,
+  receiptPath,
+} from "@/lib/receipts";
 import MedicationOrderCard from "@/components/MedicationOrderCard";
 import ReviewForm from "@/components/ReviewForm";
 import IntakeForm from "@/components/IntakeForm";
@@ -170,6 +175,14 @@ export default async function PatientDashboard({ params }) {
                   >
                     {t("patientDashboard.manage")}
                   </Link>
+                  {consultationHasReceipt(a) && (
+                    <a
+                      href={receiptPath("consultation", a.id)}
+                      className="btn-ghost text-sm"
+                    >
+                      {t("receipt.button")}
+                    </a>
+                  )}
                 </div>
                 {a.status === "confirmed" && !a.intakeAnswers && (
                   <IntakeForm manageToken={a.manageToken} />
@@ -211,6 +224,14 @@ export default async function PatientDashboard({ params }) {
                   <p className="text-ink-soft">
                     {formatIst(a.startAt, "dd LLL yyyy")} IST
                   </p>
+                  {consultationHasReceipt(a) && (
+                    <a
+                      href={receiptPath("consultation", a.id)}
+                      className="inline-flex min-h-11 items-center text-sage-deep font-semibold underline underline-offset-4"
+                    >
+                      {t("receipt.button")}
+                    </a>
+                  )}
                 </div>
                 <span
                   className={`shrink-0 text-xs px-2 py-1 rounded-full ${STATUS_STYLE[a.status]}`}
@@ -272,6 +293,15 @@ export default async function PatientDashboard({ params }) {
                       </span>
                     )}
                   </p>
+                )}
+
+                {medicineHasReceipt(o) && (
+                  <a
+                    href={receiptPath("medicine", o.id)}
+                    className="btn-ghost text-sm inline-block"
+                  >
+                    {t("receipt.button")}
+                  </a>
                 )}
               </div>
             ))}

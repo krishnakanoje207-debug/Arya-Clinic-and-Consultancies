@@ -31,6 +31,7 @@ export async function saveSettings(prevState, formData) {
     "seo_title",
     "seo_description",
     "medical_disclaimer",
+    "receipt_note",
   ];
   for (const k of textKeys) {
     await setSetting(k, String(formData.get(k) ?? ""));

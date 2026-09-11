@@ -183,6 +183,7 @@ export const appointments = pgTable("appointments", {
   razorpayOrderId: text("razorpay_order_id"), // gateway order id — webhook correlation key
   razorpayPaymentId: text("razorpay_payment_id"), // captured payment id (set on confirm)
   razorpayRefundId: text("razorpay_refund_id"), // set when a lost-slot payment is auto-refunded
+  paidAt: timestamp("paid_at", { withTimezone: true }), // set on confirmation; the receipt's payment date
   needsReview: boolean("needs_review").notNull().default(false), // legacy paid-but-hold-expired flow
   holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
   intakeAnswers: jsonb("intake_answers"), // pre-consultation case-taking form

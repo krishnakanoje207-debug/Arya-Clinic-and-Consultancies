@@ -193,6 +193,16 @@ export default function SettingsForm({ settings }) {
         />
       </Section>
 
+      <Section title="Payment receipts">
+        <Field
+          label="Receipt note"
+          name="receipt_note"
+          defaultValue={s.receipt_note}
+          textarea
+          hint="Printed at the foot of every consultation and medicine receipt — for example tax wording your CA advises. Leave empty for none. Receipts also show the brand name, your name, qualifications and registration number (Content ▸ Profile), the clinic address and the contact email."
+        />
+      </Section>
+
       <Section title="Brand">
         <Field label="Brand name" name="brand_name" defaultValue={s.brand_name} hint="Shown in the site header (e.g. ARYA)." />
         <Field label="Brand tagline" name="brand_tagline" defaultValue={s.brand_tagline} hint="Small line under the brand name (e.g. Healing starts here)." />

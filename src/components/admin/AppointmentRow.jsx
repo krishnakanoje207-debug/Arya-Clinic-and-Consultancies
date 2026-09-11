@@ -26,7 +26,7 @@ const STATUS_STYLE = {
   expired: "bg-gray-100 text-gray-500",
 };
 
-export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
+export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptUrl }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [meetingLink, setMeetingLink] = useState(appt.meetingLink || "");
@@ -98,6 +98,16 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel }) {
             <div className="text-[11px] text-ink-soft/70 mt-1 break-all">
               Order: {appt.razorpayOrderId}
             </div>
+          )}
+          {receiptUrl && (
+            <a
+              href={receiptUrl}
+              target="_blank"
+              rel="noopener"
+              className="text-[11px] text-sage-deep underline mt-1 inline-block"
+            >
+              Receipt
+            </a>
           )}
         </td>
         <td className="p-3 text-right space-x-1 whitespace-nowrap">

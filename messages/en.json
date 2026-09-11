@@ -402,5 +402,30 @@
     "tools": "Self-assessment tools",
     "clinicInfo": "Clinic info",
     "googleReview": "Review us on Google"
+  },
+  "receipt": {
+    "consultationTitle": "Consultation payment receipt",
+    "medicineTitle": "Medicine payment receipt",
+    "number": "Receipt no.",
+    "paymentDate": "Payment date",
+    "patient": "Patient",
+    "service": "Consultation",
+    "appointment": "Appointment",
+    "mode": "Mode",
+    "medicines": "Medicines",
+    "supply": "Supply",
+    "shipTo": "Ship to",
+    "dispatch": "Dispatch",
+    "dispatchedOn": "Dispatched by the clinic on {date}",
+    "toBeDispatched": "To be dispatched by the clinic",
+    "courierRef": "Courier reference",
+    "amountPaid": "Amount paid",
+    "paymentMethod": "Payment method",
+    "online": "Online payment (Razorpay)",
+    "paymentId": "Payment ID",
+    "regNo": "Reg. No.",
+    "print": "Print / Save as PDF",
+    "computerGenerated": "This is a computer-generated receipt and does not require a signature.",
+    "button": "Receipt"
   }
 }

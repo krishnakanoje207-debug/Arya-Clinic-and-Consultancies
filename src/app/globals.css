@@ -279,6 +279,15 @@ details.faq-item .faq-answer { animation: fade-up 0.35s ease both; }
   }
 }
 
+/* Payment receipts print as a plain white page: no button, frame or tint. */
+@media print {
+  .no-print { display: none !important; }
+  html:has(.receipt-page),
+  body:has(.receipt-page) { background: #fff; }
+  .receipt-page { background: #fff; padding: 0; min-height: 0; }
+  .receipt-page article { border: none; box-shadow: none; padding: 0; }
+}
+
 /* ---------- Accessibility ---------- */
 
 @media (prefers-reduced-motion: reduce) {

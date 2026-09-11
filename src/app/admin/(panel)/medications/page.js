@@ -4,6 +4,7 @@ import { medicationOrders, patients } from "@/db/schema";
 import { formatIst } from "@/lib/time";
 import MedicationCreateForm from "@/components/admin/MedicationCreateForm";
 import MedicationRow from "@/components/admin/MedicationRow";
+import { medicineHasReceipt, receiptPath } from "@/lib/receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,9 @@ export default async function AdminMedications() {
                   patientName={patientName}
                   patientPhone={patientPhone}
                   createdLabel={formatIst(order.createdAt)}
+                  receiptUrl={
+                    medicineHasReceipt(order) ? receiptPath("medicine", order.id) : null
+                  }
                 />
               ))}
             </tbody>

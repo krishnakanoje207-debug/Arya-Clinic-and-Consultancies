@@ -50,6 +50,9 @@ export const SETTINGS_DEFAULTS = {
     "Book online homoeopathy consultations with Dr. Seema Prajapati (BHMS), 20 years' experience. Women's health, paediatric, respiratory, skin and lifestyle disorders. Pune & Nagpur, and worldwide online.",
   medical_disclaimer:
     "Information on this site is for general awareness and is not a substitute for professional medical advice. Individual results vary.",
+  // Printed at the foot of every payment receipt (e.g. tax wording the
+  // doctor's CA advises). Empty by default: the site makes no tax claim.
+  receipt_note: "",
 };
 
 /** Read many settings at once, merged over defaults. Falls back to pure

@@ -1,6 +1,7 @@
 import { listAppointments } from "@/lib/admin";
 import { formatIst } from "@/lib/time";
 import AppointmentRow from "@/components/admin/AppointmentRow";
+import { consultationHasReceipt, receiptPath } from "@/lib/receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,11 @@ export default async function AdminAppointments() {
                   appt={appt}
                   serviceTitle={serviceTitle}
                   whenLabel={formatIst(appt.startAt)}
+                  receiptUrl={
+                    consultationHasReceipt(appt)
+                      ? receiptPath("consultation", appt.id)
+                      : null
+                  }
                 />
               ))}
             </tbody>

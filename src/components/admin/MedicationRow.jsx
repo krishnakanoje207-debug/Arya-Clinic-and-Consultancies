@@ -17,7 +17,7 @@ const STATUS_STYLE = {
  * cancel only (the Razorpay webhook marks it paid automatically); paid → mark
  * shipped (optional courier ref) or cancel; shipped is terminal. Surfaces a
  * failed action with an alert, like AppointmentRow. */
-export default function MedicationRow({ order, patientName, patientPhone, createdLabel }) {
+export default function MedicationRow({ order, patientName, patientPhone, createdLabel, receiptUrl }) {
   const [pending, startTransition] = useTransition();
   const [courierRef, setCourierRef] = useState("");
 
@@ -57,6 +57,16 @@ export default function MedicationRow({ order, patientName, patientPhone, create
           <div className="text-[11px] text-terracotta-deep mt-1 break-all">
             Refunded: {order.razorpayRefundId}
           </div>
+        )}
+        {receiptUrl && (
+          <a
+            href={receiptUrl}
+            target="_blank"
+            rel="noopener"
+            className="text-[11px] text-sage-deep underline mt-1 inline-block"
+          >
+            Receipt
+          </a>
         )}
       </td>
       <td className="p-3">

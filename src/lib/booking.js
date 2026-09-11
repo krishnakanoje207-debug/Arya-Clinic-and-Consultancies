@@ -499,7 +499,15 @@ export async function confirmPaidAppointment(id, opts = {}) {
   if (current.status === "cancelled" || current.status === "completed") {
     return { ok: false, reason: "bad_state", appointment: current };
   }
-  const set = { status: "confirmed", needsReview: false, updatedAt: nowUtc() };
+  const now = nowUtc();
+  // paidAt is the receipt's payment date; keep the first stamp if a row is
+  // ever confirmed twice (e.g. restored after a lapsed hold).
+  const set = {
+    status: "confirmed",
+    needsReview: false,
+    paidAt: current.paidAt ?? now,
+    updatedAt: now,
+  };
   if (paymentId) set.razorpayPaymentId = paymentId;
   if (meetingLink !== undefined) set.meetingLink = meetingLink || null;
   // An online consult that still has no link falls back to the clinic's
