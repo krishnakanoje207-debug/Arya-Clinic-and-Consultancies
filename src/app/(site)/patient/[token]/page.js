@@ -11,6 +11,7 @@ import { canJoin, joinWindow } from "@/lib/meeting";
 import { reviewExistsForPatient } from "@/lib/reviews";
 import MedicationOrderCard from "@/components/MedicationOrderCard";
 import ReviewForm from "@/components/ReviewForm";
+import IntakeForm from "@/components/IntakeForm";
 
 export const dynamic = "force-dynamic";
 
@@ -170,6 +171,9 @@ export default async function PatientDashboard({ params }) {
                     {t("patientDashboard.manage")}
                   </Link>
                 </div>
+                {a.status === "confirmed" && !a.intakeAnswers && (
+                  <IntakeForm manageToken={a.manageToken} />
+                )}
               </div>
             ))}
           </div>

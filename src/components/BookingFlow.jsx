@@ -2,14 +2,74 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import {
-  createBookingAction,
-  getBookingStatusAction,
-  getCalendarAction,
-  submitIntakeAction,
-} from "@/app/actions/booking";
+import { createBookingAction, getCalendarAction } from "@/app/actions/booking";
 import { rescheduleByToken } from "@/app/actions/manage";
 import { openRazorpayCheckout } from "@/lib/razorpay-checkout";
+
+/* The booking being paid for, remembered on the device. On a phone, paying by
+   UPI hands off to GPay/PhonePe and back; the browser often discards the
+   backgrounded tab and reloads /book from scratch, wiping React state — the
+   patient came back to an empty form with no way to their dashboard. With
+   this, a reload finds the booking again and carries on to the dashboard. */
+const INFLIGHT_KEY = "arya.inflightBooking";
+const INFLIGHT_MAX_MS = 30 * 60 * 1000;
+
+function saveInflight(b) {
+  try {
+    localStorage.setItem(
+      INFLIGHT_KEY,
+      JSON.stringify({
+        manageToken: b.manageToken,
+        dashboardToken: b.dashboardToken,
+        savedAt: Date.now(),
+      }),
+    );
+  } catch {
+    /* storage blocked — the in-page flow still works */
+  }
+}
+
+function readInflight() {
+  try {
+    const v = JSON.parse(localStorage.getItem(INFLIGHT_KEY) || "null");
+    if (v?.manageToken && v?.dashboardToken && Date.now() - v.savedAt < INFLIGHT_MAX_MS) {
+      return v;
+    }
+    localStorage.removeItem(INFLIGHT_KEY);
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function clearInflight() {
+  try {
+    localStorage.removeItem(INFLIGHT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+function goToDashboard(dashboardToken) {
+  clearInflight();
+  window.location.assign(`/patient/${dashboardToken}`);
+}
+
+/* Status polling goes to its own route, not a server action: actions POST to
+   /book and share its 20-per-5-minutes rate limit, which polling exhausted. */
+async function fetchBookingStatus(manageToken) {
+  try {
+    const res = await fetch("/api/booking-status", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ token: manageToken }),
+      cache: "no-store",
+    });
+    return await res.json();
+  } catch {
+    return { ok: false };
+  }
+}
 
 function formatDayLabel(dateStr) {
   const d = new Date(`${dateStr}T00:00:00`);
@@ -72,6 +132,32 @@ export default function BookingFlow({
   const [booking, setBooking] = useState(null);
   const [payment, setPayment] = useState(null);
   const [error, setError] = useState(null);
+  // True when the pending screen was restored after a reload, i.e. we don't
+  // know whether the patient actually finished paying.
+  const [recovered, setRecovered] = useState(false);
+
+  // Back from the UPI app to a reloaded page: resume the booking in flight.
+  useEffect(() => {
+    if (reschedule) return;
+    const inflight = readInflight();
+    if (!inflight) return;
+    let cancelled = false;
+    fetchBookingStatus(inflight.manageToken).then((res) => {
+      if (cancelled || !res.ok) return;
+      if (res.status === "confirmed") {
+        goToDashboard(inflight.dashboardToken);
+      } else if (res.status === "pending_payment") {
+        setBooking(inflight);
+        setRecovered(true);
+        setStep("pending");
+      } else {
+        clearInflight();
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [reschedule]);
 
   const service = services.find((s) => s.id === Number(serviceId)) || null;
   const needsModeChoice = !reschedule && clinicMode && service?.mode === "both";
@@ -160,6 +246,7 @@ export default function BookingFlow({
       }
       setBooking(res.booking);
       setPayment(res.payment);
+      saveInflight(res.booking);
       setStep("payment");
     });
   }
@@ -436,28 +523,50 @@ export default function BookingFlow({
         <PaymentWindow
           t={t}
           payment={payment}
+          booking={booking}
           onPaid={() => setStep("pending")}
         />
       )}
 
       {step === "pending" && (
-        <PendingWithIntake
+        <PendingConfirmation
           t={t}
           manageToken={booking.manageToken}
           dashboardToken={booking.dashboardToken}
+          recovered={recovered}
         />
       )}
     </div>
   );
 }
 
-function PaymentWindow({ t, payment, onPaid }) {
+function PaymentWindow({ t, payment, booking, onPaid }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const pollRef = useRef(null);
+
+  useEffect(() => () => clearInterval(pollRef.current), []);
 
   function pay() {
     setError(null);
     setBusy(true);
+    // Watch for the webhook's confirmation from the moment Checkout opens, not
+    // only after its success handler: on some phones the handler never fires
+    // (the UPI app round-trip loses it), but the payment still lands.
+    // Stops with the 15-minute slot hold; nothing can confirm after that.
+    clearInterval(pollRef.current);
+    const startedAt = Date.now();
+    pollRef.current = setInterval(async () => {
+      if (Date.now() - startedAt > 15 * 60 * 1000) {
+        clearInterval(pollRef.current);
+        return;
+      }
+      const res = await fetchBookingStatus(booking.manageToken);
+      if (res.ok && res.confirmed && booking.dashboardToken) {
+        clearInterval(pollRef.current);
+        goToDashboard(booking.dashboardToken);
+      }
+    }, 3000);
     openRazorpayCheckout({
       keyId: payment.keyId,
       orderId: payment.orderId,
@@ -507,123 +616,92 @@ function PaymentWindow({ t, payment, onPaid }) {
   );
 }
 
-function PendingWithIntake({ t, manageToken, dashboardToken }) {
-  const [done, setDone] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [pending, startTransition] = useTransition();
-  const [answers, setAnswers] = useState({});
-  // Poll the webhook-driven confirmation so the patient sees it flip to
-  // "confirmed" without refreshing; after ~30s show a reassuring fallback.
-  const [confirmState, setConfirmState] = useState("confirming");
+/* After payment: wait for the webhook's confirmation, then take the patient to
+   their dashboard — the page they come back to for everything after this (the
+   pre-consultation form lives there now, so nothing is lost by leaving).
+   Normal path: Checkout reported success, so the money is in; if the webhook
+   is slow the dashboard shows "Awaiting confirmation" and updates on refresh.
+   Recovered path (the page reloaded mid-payment): we can't tell whether the
+   patient finished paying, so we never send them on without a confirmation. */
+function PendingConfirmation({ t, manageToken, dashboardToken, recovered }) {
+  // confirming | confirmed | slow | unpaid
+  const [state, setState] = useState("confirming");
 
   useEffect(() => {
     let tries = 0;
     let stopped = false;
     const iv = setInterval(async () => {
       tries += 1;
-      const res = await getBookingStatusAction(manageToken);
+      const res = await fetchBookingStatus(manageToken);
       if (stopped) return;
       if (res.ok && res.confirmed) {
-        setConfirmState("confirmed");
         clearInterval(iv);
-      } else if (tries >= 15) {
-        setConfirmState("timeout");
-        clearInterval(iv);
+        setState("confirmed");
+        if (dashboardToken) setTimeout(() => goToDashboard(dashboardToken), 1200);
+      } else if (tries === 15) {
+        // ~30s without a confirmation.
+        if (!recovered && dashboardToken) {
+          clearInterval(iv);
+          goToDashboard(dashboardToken);
+        } else {
+          setState(recovered ? "unpaid" : "slow");
+        }
+      } else if (tries >= 90) {
+        clearInterval(iv); // ~3 min
       }
     }, 2000);
     return () => {
       stopped = true;
       clearInterval(iv);
     };
-  }, [manageToken]);
-
-  const fields = [
-    "chiefComplaint",
-    "duration",
-    "better",
-    "worse",
-    "history",
-    "medications",
-    "lifestyle",
-  ];
-
-  function save(e) {
-    e.preventDefault();
-    startTransition(async () => {
-      await submitIntakeAction(manageToken, answers);
-      setSaved(true);
-      setDone(true);
-    });
-  }
+  }, [manageToken, dashboardToken, recovered]);
 
   const heading =
-    confirmState === "confirmed"
-      ? t("booking.confirmedTitle")
-      : confirmState === "timeout"
-        ? t("booking.confirmingTitle")
+    state === "confirmed"
+      ? `✓ ${t("booking.confirmedTitle")}`
+      : state === "unpaid"
+        ? t("booking.notYetReceivedTitle")
         : t("booking.confirmingTitle");
   const bodyText =
-    confirmState === "confirmed"
-      ? t("booking.confirmedBody")
-      : confirmState === "timeout"
+    state === "confirmed"
+      ? dashboardToken
+        ? t("booking.redirecting")
+        : t("booking.confirmedBody")
+      : state === "slow"
         ? t("booking.confirmOnItsWay")
-        : t("booking.confirmingBody");
+        : state === "unpaid"
+          ? t("booking.notYetReceived")
+          : t("booking.confirmingBody");
 
   return (
     <div className="card-warm p-6 space-y-5">
       <div>
         <h2 className="font-display text-2xl text-sage-deep font-semibold">
-          {confirmState === "confirmed" ? "✓ " : ""}
           {heading}
         </h2>
         <p className="text-sm text-ink-soft mt-1">{bodyText}</p>
       </div>
 
-      {dashboardToken && (
-        <a
-          href={`/patient/${dashboardToken}`}
-          className="btn-primary inline-block"
-        >
-          {t("booking.viewDashboard")}
-        </a>
-      )}
-
-      {!done ? (
-        <form onSubmit={save} className="space-y-3 border-t border-[var(--border)] pt-4">
-          <h3 className="font-semibold text-ink">{t("booking.intakeTitle")}</h3>
-          <p className="text-sm text-ink-soft">{t("booking.intakeBody")}</p>
-          {fields.map((f) => (
-            <div key={f}>
-              <label className="block text-sm text-ink mb-1">
-                {t(`intake.${f}`)}
-              </label>
-              <textarea
-                rows={2}
-                value={answers[f] || ""}
-                onChange={(e) => setAnswers({ ...answers, [f]: e.target.value })}
-                className="w-full rounded-lg border border-[var(--border)] px-3 py-2 text-sm"
-              />
-            </div>
-          ))}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={() => setDone(true)}
-              className="btn-ghost"
-            >
-              {t("booking.skip")}
-            </button>
-            <button type="submit" disabled={pending} className="btn-primary flex-1">
-              {pending ? t("common.loading") : t("booking.intakeSubmit")}
-            </button>
-          </div>
-        </form>
-      ) : (
-        <p className="text-sm text-sage-deep border-t border-[var(--border)] pt-4">
-          {saved ? "✓ " : ""}
-          {t("booking.pendingBody")}
-        </p>
-      )}
+      <div className="flex flex-wrap gap-3">
+        {dashboardToken && (
+          <a
+            href={`/patient/${dashboardToken}`}
+            onClick={clearInflight}
+            className="btn-primary inline-block"
+          >
+            {t("booking.viewDashboard")}
+          </a>
+        )}
+        {state === "unpaid" && (
+          <a
+            href="/book"
+            onClick={clearInflight}
+            className="btn-ghost inline-block"
+          >
+            {t("booking.bookAgain")}
+          </a>
+        )}
+      </div>
     </div>
   );
 }

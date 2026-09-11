@@ -233,13 +233,11 @@
     "confirmedBody": "Your payment is confirmed. You'll also get a confirmation by SMS and email.",
     "confirmOnItsWay": "Your payment was received and your confirmation is on its way. You can safely close this page — track it anytime on your dashboard.",
     "pendingTitle": "Payment received — pending verification",
-    "pendingBody": "Thank you. The doctor will verify your payment and confirm your appointment shortly. You'll get a confirmation by SMS and email.",
     "slotTaken": "Sorry, that slot was just booked by someone else. Please pick another time.",
     "tooManyHolds": "You already have bookings awaiting payment on this number. Please complete or let them expire first.",
     "intakeTitle": "Pre-consultation form (optional)",
     "intakeBody": "A few questions so the doctor can prepare for your consultation.",
     "intakeSubmit": "Submit and finish",
-    "skip": "Skip for now",
     "rescheduleTitle": "Pick a new time",
     "confirmNewTime": "Confirm new time",
     "rescheduleDone": "Your appointment has been moved.",
@@ -249,7 +247,11 @@
     "forSelf": "Myself",
     "forOther": "Someone else",
     "patientName": "Patient's full name",
-    "otherHint": "Enter the patient's name above and your own number here — we'll message you, and the patient gets their own private dashboard link."
+    "otherHint": "Enter the patient's name above and your own number here — we'll message you, and the patient gets their own private dashboard link.",
+    "redirecting": "Taking you to your patient dashboard…",
+    "notYetReceivedTitle": "Waiting for your payment",
+    "notYetReceived": "We haven’t received this payment yet. If you paid, it will appear on your dashboard within a few minutes. If you didn’t finish paying, you can book again.",
+    "bookAgain": "Book again"
   },
   "patientDashboard": {
     "title": "Your patient dashboard",
@@ -271,7 +273,8 @@
       "cancelled": "Cancelled",
       "expired": "Expired"
     },
-    "joinOpensAt": "Join link opens at {time} IST"
+    "joinOpensAt": "Join link opens at {time} IST",
+    "intakeSaved": "Thank you — your answers have been sent to the doctor."
   },
   "intake": {
     "chiefComplaint": "Main complaint / reason for consultation",
@@ -325,7 +328,8 @@
     "language": "भाषा / Language",
     "loading": "Loading…",
     "required": "This field is required",
-    "send": "Send message"
+    "send": "Send message",
+    "error": "Something went wrong. Please try again."
   },
   "policy": {
     "title": "Cancellation, Reschedule & Refund Policy",

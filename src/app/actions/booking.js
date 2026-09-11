@@ -105,19 +105,6 @@ export async function createBookingAction(input) {
   };
 }
 
-/** Poll the confirmation status of a booking after Checkout closes (the webhook
- * confirms asynchronously). Manage-token scoped so only the booker can read it. */
-export async function getBookingStatusAction(manageToken) {
-  const token = tokenSchema.safeParse(manageToken);
-  if (!token.success) return { ok: false };
-  const [appt] = await db
-    .select({ status: appointments.status })
-    .from(appointments)
-    .where(eq(appointments.manageToken, token.data));
-  if (!appt) return { ok: false };
-  return { ok: true, status: appt.status, confirmed: appt.status === "confirmed" };
-}
-
 /** Attach optional pre-consultation intake answers to the appointment.
  * Whitelisted keys + bounded lengths only (see intakeSchema). */
 export async function submitIntakeAction(manageToken, answers) {
