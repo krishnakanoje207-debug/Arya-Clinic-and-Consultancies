@@ -9,7 +9,7 @@ import {
 } from "@/lib/content";
 import { getSettings } from "@/lib/settings";
 import CaseGalleryGrid from "@/components/CaseGalleryGrid";
-import { FaqJsonLd } from "@/components/JsonLd";
+import { FaqJsonLd, jsonLdHtml } from "@/components/JsonLd";
 import Reveal from "@/components/Reveal";
 
 // Same hourly revalidation as the home page: admin edits surface without a
@@ -112,7 +112,7 @@ export default async function ConditionPage({ params }) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(pageJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: jsonLdHtml(pageJsonLd) }}
       />
       <FaqJsonLd faqs={faqList} locale={locale} />
 

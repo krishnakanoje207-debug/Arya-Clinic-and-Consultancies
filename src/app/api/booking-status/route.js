@@ -12,7 +12,7 @@ import { tokenSchema } from "@/lib/validation";
  * to /book, which the proxy rate-limits to 20 requests per 5 minutes per IP.
  * Polling from there used up that budget in about a minute; the checks then
  * came back 429 and the redirect never happened (and the page could not even
- * reload its calendar). This path carries no rate-limit rule.
+ * reload its calendar). This path has its own, much higher limit in the proxy.
  *
  * Scoped by the booking's manage token (a UUID only the booker holds), sent in
  * the body so it stays out of URLs and access logs. Returns status only.

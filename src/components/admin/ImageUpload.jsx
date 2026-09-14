@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  getUploadApiKeyAction,
+  signUploadAction,
+} from "@/app/admin/actions/uploads";
 
 /**
  * Image field with a real uploader. When Cloudinary is configured
@@ -50,13 +54,25 @@ export default function ImageUpload({
     return () => script.removeEventListener("load", onLoad);
   }, [configured]);
 
-  function openWidget() {
+  async function openWidget() {
     if (!window.cloudinary) return;
     if (!widgetRef.current) {
+      // Signed when the server has Cloudinary API credentials (see
+      // src/app/admin/actions/uploads.js); unsigned preset otherwise.
+      const apiKey = await getUploadApiKeyAction();
+      const signing = apiKey
+        ? {
+            apiKey,
+            uploadSignature: (callback, paramsToSign) => {
+              signUploadAction(paramsToSign).then(callback);
+            },
+          }
+        : {};
       widgetRef.current = window.cloudinary.createUploadWidget(
         {
           cloudName: CLOUD,
           uploadPreset: PRESET,
+          ...signing,
           sources: ["local", "url", "camera", "google_drive", "dropbox"],
           multiple: false,
           maxFileSize: 5_000_000, // 5 MB

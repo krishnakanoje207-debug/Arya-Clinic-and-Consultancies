@@ -15,7 +15,8 @@ const EVENING = "30 14 * * *"; // 20:00 IST
 export async function GET(request) {
   const secret = process.env.CRON_SECRET;
   const auth = request.headers.get("authorization");
-  if (secret && auth !== `Bearer ${secret}`) {
+  // Fail closed: an unset secret must not leave the route open to anyone.
+  if (!secret || auth !== `Bearer ${secret}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 

@@ -1,3 +1,9 @@
+/** JSON for an inline <script>: escape "<" so admin-entered text containing
+ * "</script>" can't close the tag early. Still valid JSON for parsers. */
+export function jsonLdHtml(data) {
+  return JSON.stringify(data).replace(/</g, "\\" + "u003c");
+}
+
 /**
  * Physician / MedicalBusiness structured data (schema.org) for local SEO.
  * Rendered server-side into the page; Google reads it for rich results.
@@ -23,7 +29,7 @@ export default function JsonLd({ profile, settings }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdHtml(data) }}
     />
   );
 }
@@ -46,7 +52,7 @@ export function FaqJsonLd({ faqs, locale }) {
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      dangerouslySetInnerHTML={{ __html: jsonLdHtml(data) }}
     />
   );
 }

@@ -6,8 +6,9 @@
  * mutations, fixed-window rate limits.
  *
  * Rate limits are fixed-window counters per IP+path over the POST surfaces
- * a bot can abuse: booking/server actions, the contact form, login attempts
- * and manage-token probing. In-memory: on serverless this is per-instance,
+ * a bot can abuse: booking/server actions, the contact form, login attempts,
+ * manage-token probing, quiz leads, the patient dashboard and booking-status
+ * polling. In-memory: on serverless this is per-instance,
  * so treat it as burst protection, not a hard quota — the DB-level hold cap
  * in src/lib/booking.js is the real anti-slot-hoarding guard. Zero-cost rule
  * forbids an external rate-limit store.
@@ -24,6 +25,15 @@ const RULES = [
   [(p) => p === "/admin/login", 10, 15 * 60_000],
   [(p) => p.startsWith("/manage/"), 15, 5 * 60_000],
   [(p) => p.startsWith("/api/auth/"), 20, 15 * 60_000],
+  // Quiz lead submissions (each one writes a quiz_leads row).
+  [(p) => p.startsWith("/quiz/"), 10, 5 * 60_000],
+  // Patient dashboard: medication payment (opens a Razorpay order), its
+  // status polling (up to 15 calls per payment), reviews and intake answers.
+  [(p) => p.startsWith("/patient/"), 60, 5 * 60_000],
+  // Post-payment polling. BookingFlow's checkout poll (every 3 s) can overlap
+  // the confirmation screen's poll (every 2 s): ~250 calls in 5 minutes at
+  // worst. The cap is well above that; it only stops a script hammering it.
+  [(p) => p === "/api/booking-status", 600, 5 * 60_000],
 ];
 
 /**

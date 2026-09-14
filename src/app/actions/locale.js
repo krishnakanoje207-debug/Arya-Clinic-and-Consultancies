@@ -12,5 +12,7 @@ export async function setLocale(locale) {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "lax",
+    httpOnly: true, // only the server reads it (src/i18n/request.js)
+    secure: process.env.NODE_ENV === "production",
   });
 }

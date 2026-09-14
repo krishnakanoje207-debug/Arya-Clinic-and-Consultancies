@@ -55,6 +55,7 @@ const nextConfig = {
       { source: "/admin/:path*", headers: PRIVATE_HEADERS },
       { source: "/manage/:path*", headers: PRIVATE_HEADERS },
       { source: "/patient/:path*", headers: PRIVATE_HEADERS },
+      { source: "/receipt/:path*", headers: PRIVATE_HEADERS },
     ];
   },
 };
