@@ -9,6 +9,14 @@ export const contentType = "image/png";
  * og:image + twitter:image). Drawn from the admin SEO settings so the doctor
  * can change the wording without a redeploy; falls back to the built-in
  * defaults when the DB is unreachable at build time. */
+/** Trim to a whole word so the card never ends mid-syllable. */
+function clamp(text, max) {
+  const t = String(text || "").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  return `${cut.slice(0, cut.lastIndexOf(" "))}…`;
+}
+
 export default async function OpengraphImage() {
   const s = await getSettings(["seo_title", "seo_description", "brand_tagline"]);
 
@@ -67,7 +75,7 @@ export default async function OpengraphImage() {
             display: "flex",
           }}
         >
-          {String(s.seo_description || "").slice(0, 150)}
+          {clamp(s.seo_description, 150)}
         </div>
       </div>
     ),

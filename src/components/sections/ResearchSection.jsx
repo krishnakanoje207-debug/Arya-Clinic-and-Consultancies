@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import SafeImage from "@/components/SafeImage";
 import { localized } from "@/lib/content";
 
 const TYPE_LABEL = {
@@ -30,12 +31,13 @@ export default async function ResearchSection({ items, locale }) {
             rel="noreferrer"
             className="card-warm card-lift overflow-hidden group"
           >
-            <div className="aspect-video bg-sage-soft overflow-hidden">
+            <div className="relative aspect-video bg-sage-soft overflow-hidden">
               {it.coverImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <SafeImage
                   src={it.coverImage}
                   alt=""
+                  fill
+                  sizes="(min-width:768px) 33vw, 100vw"
                   className="h-full w-full object-cover group-hover:scale-105 transition"
                 />
               ) : (

@@ -42,6 +42,8 @@ const PRIVATE_HEADERS = [
 const nextConfig = {
   poweredByHeader: false,
   images: {
+    // Served to browsers that accept them; JPEG/PNG stays the fallback.
+    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       { protocol: "https", hostname: "res.cloudinary.com" },
     ],

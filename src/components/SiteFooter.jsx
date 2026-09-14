@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getSettings, isClinicMode } from "@/lib/settings";
@@ -40,10 +41,11 @@ export default async function SiteFooter() {
         {/* Col 1 — brand */}
         <div>
           <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Image
               src="/brand/arya-logo.png"
               alt=""
+              width={48}
+              height={48}
               className="h-12 w-12 rounded-full object-cover ring-1 ring-[var(--border)]"
             />
             <div>

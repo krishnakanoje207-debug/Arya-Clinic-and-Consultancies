@@ -21,6 +21,7 @@ import ResearchSection from "@/components/sections/ResearchSection";
 import Faq from "@/components/sections/Faq";
 import Contact from "@/components/sections/Contact";
 import JsonLd, { FaqJsonLd } from "@/components/JsonLd";
+import SafeImage from "@/components/SafeImage";
 import Reveal from "@/components/Reveal";
 
 // Content is DB-driven and safe to cache; revalidate hourly so admin edits
@@ -59,8 +60,16 @@ export default async function HomePage() {
         aria-hidden="true"
         className="fixed inset-0 -z-10 pointer-events-none"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={bgImage} alt="" className="h-full w-full object-cover" />
+        {/* Through next/image: it is the largest asset on the page, so it
+            is served as WebP/AVIF at the viewer's actual width. */}
+        <SafeImage
+          src={bgImage}
+          alt=""
+          fill
+          sizes="100vw"
+          priority
+          className="h-full w-full object-cover"
+        />
         <div className="absolute inset-0 bg-cream/45" />
       </div>
 

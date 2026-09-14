@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getSettings } from "@/lib/settings";
@@ -120,10 +121,12 @@ export default async function SiteHeader() {
       {/* Main bar */}
       <div className="mx-auto max-w-7xl px-4 h-16 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2.5 shrink-0">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
+          <Image
             src="/brand/arya-logo.png"
             alt=""
+            width={40}
+            height={40}
+            priority
             className="h-10 w-10 rounded-full object-cover ring-1 ring-[var(--border)]"
           />
           <span className="leading-tight">

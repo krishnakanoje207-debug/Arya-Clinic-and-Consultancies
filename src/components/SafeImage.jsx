@@ -19,7 +19,7 @@ function isOptimizable(src) {
   }
 }
 
-export default function SafeImage({ src, alt = "", width, height, className, priority, fill }) {
+export default function SafeImage({ src, alt = "", width, height, className, priority, fill, sizes }) {
   if (!src) return null;
   if (isOptimizable(src)) {
     return (
@@ -29,6 +29,7 @@ export default function SafeImage({ src, alt = "", width, height, className, pri
         width={fill ? undefined : width}
         height={fill ? undefined : height}
         fill={fill}
+        sizes={sizes}
         priority={priority}
         className={className}
       />

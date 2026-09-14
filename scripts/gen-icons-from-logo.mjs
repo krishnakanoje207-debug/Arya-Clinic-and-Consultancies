@@ -78,7 +78,10 @@ async function emit(badge, size, path) {
   await sharp(badge)
     .resize(size, size, { fit: "cover" })
     .sharpen({ sigma: 1 })
-    .png()
+    // These ship raw from /public (the PWA manifest and the <link rel=icon>
+    // bypass next/image), so quantize to a palette here — ~70% smaller than
+    // full-colour PNG with no visible difference on a flat badge.
+    .png({ compressionLevel: 9, effort: 10, palette: true, quality: 88, dither: 0.6 })
     .toFile(path);
   console.log(`✓ ${path} (${size}px)`);
 }
