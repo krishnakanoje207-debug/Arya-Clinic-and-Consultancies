@@ -43,7 +43,7 @@ export default async function NotFound() {
       <main className="flex-1 bg-cream">
         <div className="mx-auto max-w-6xl px-4 py-14 md:py-24 grid gap-12 md:grid-cols-[1.05fr_1fr] md:items-center lg:gap-20">
           <div>
-            <h1 className="font-display text-4xl md:text-5xl font-semibold text-ink leading-[1.12] text-balance">
+            <h1 className="max-w-[14ch] font-display text-4xl md:text-5xl font-semibold text-ink leading-[1.12] text-balance">
               <span className="title-accent">{t("title")}</span>
             </h1>
             <p className="mt-6 max-w-[44ch] text-lg text-ink-soft leading-relaxed">
