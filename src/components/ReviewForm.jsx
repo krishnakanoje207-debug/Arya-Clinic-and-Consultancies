@@ -121,7 +121,7 @@ export default function ReviewForm({ token, defaultName, alreadySubmitted }) {
         <span>{t("review.consent")}</span>
       </label>
 
-      {error && <p className="text-sm text-terracotta-deep">{error}</p>}
+      {error && <p role="alert" className="text-sm text-terracotta-deep">{error}</p>}
 
       <button type="submit" disabled={pending} className="btn-primary w-full">
         {pending ? t("common.loading") : t("review.submit")}

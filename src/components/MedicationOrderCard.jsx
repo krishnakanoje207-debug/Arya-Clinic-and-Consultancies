@@ -154,7 +154,7 @@ export default function MedicationOrderCard({
               ₹{chosen.amountInr}
             </p>
 
-            {error && <p className="text-sm text-terracotta-deep">{error}</p>}
+            {error && <p role="alert" className="text-sm text-terracotta-deep">{error}</p>}
             <button
               type="submit"
               disabled={pending || busy}

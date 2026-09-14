@@ -404,7 +404,7 @@ export default function BookingFlow({
               {reschedule ? (
                 <>
                   {error && (
-                    <p className="text-sm text-terracotta-deep">{error}</p>
+                    <p role="alert" className="text-sm text-terracotta-deep">{error}</p>
                   )}
                   <button
                     type="button"
@@ -502,7 +502,7 @@ export default function BookingFlow({
                   />
                   <p className="text-xs text-ink-soft">{t("booking.holdNote")}</p>
                   {error && (
-                    <p className="text-sm text-terracotta-deep">{error}</p>
+                    <p role="alert" className="text-sm text-terracotta-deep">{error}</p>
                   )}
                   <button
                     type="submit"
@@ -600,7 +600,7 @@ function PaymentWindow({ t, payment, booking, onPaid }) {
 
       <p className="text-lg font-semibold text-terracotta">₹{payment.amountInr}</p>
 
-      {error && <p className="text-sm text-terracotta-deep">{error}</p>}
+      {error && <p role="alert" className="text-sm text-terracotta-deep">{error}</p>}
 
       <button
         type="button"

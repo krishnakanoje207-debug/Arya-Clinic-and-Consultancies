@@ -199,7 +199,7 @@ function ResultScreen({ quiz, answers, settings, onRestart }) {
               </button>
             </div>
             {status === "invalid" ? (
-              <p className="mt-2 text-sm text-terracotta-deep">{t("phoneError")}</p>
+              <p role="alert" className="mt-2 text-sm text-terracotta-deep">{t("phoneError")}</p>
             ) : null}
           </form>
         )}

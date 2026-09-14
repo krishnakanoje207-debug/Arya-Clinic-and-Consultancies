@@ -1,8 +1,11 @@
 import { getTranslations } from "next-intl/server";
 
 export async function generateMetadata() {
-  const t = await getTranslations("terms");
-  return { title: t("title") };
+  const [t, tSeo] = await Promise.all([
+    getTranslations("terms"),
+    getTranslations("seo"),
+  ]);
+  return { title: t("title"), description: tSeo("termsDescription") };
 }
 
 export default async function TermsPage() {

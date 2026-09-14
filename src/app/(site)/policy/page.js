@@ -2,8 +2,11 @@ import { getTranslations } from "next-intl/server";
 import { getSettings } from "@/lib/settings";
 
 export async function generateMetadata() {
-  const t = await getTranslations("policy");
-  return { title: t("title") };
+  const [t, tSeo] = await Promise.all([
+    getTranslations("policy"),
+    getTranslations("seo"),
+  ]);
+  return { title: t("title"), description: tSeo("policyDescription") };
 }
 
 export default async function PolicyPage() {

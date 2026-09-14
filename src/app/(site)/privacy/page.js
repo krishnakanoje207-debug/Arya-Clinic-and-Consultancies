@@ -1,6 +1,10 @@
+import { getTranslations } from "next-intl/server";
 import { getSettings } from "@/lib/settings";
 
-export const metadata = { title: "Privacy Policy" };
+export async function generateMetadata() {
+  const t = await getTranslations("seo");
+  return { title: "Privacy Policy", description: t("privacyDescription") };
+}
 
 export default async function PrivacyPage() {
   const s = await getSettings(["contact_email", "payee_name"]).catch(() => ({}));

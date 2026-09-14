@@ -1,6 +1,7 @@
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import StickyContact from "@/components/StickyContact";
+import CookieNotice from "@/components/CookieNotice";
 import { getSettings } from "@/lib/settings";
 
 /** Chrome for all public marketing/booking pages. */
@@ -22,6 +23,7 @@ export default async function SiteLayout({ children }) {
       {/* Spacer so the mobile sticky bar never covers footer content. */}
       <div className="h-16 md:hidden" aria-hidden="true" />
       <StickyContact whatsapp={s.contact_whatsapp} />
+      <CookieNotice />
     </>
   );
 }

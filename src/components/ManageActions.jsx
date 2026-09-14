@@ -33,7 +33,7 @@ export default function ManageActions({ token }) {
         {pending ? "…" : "Cancel appointment"}
       </button>
       {state === "error" && (
-        <p className="text-sm text-terracotta-deep w-full">
+        <p role="alert" className="text-sm text-terracotta-deep w-full">
           This appointment can no longer be cancelled online. Please contact the
           clinic.
         </p>

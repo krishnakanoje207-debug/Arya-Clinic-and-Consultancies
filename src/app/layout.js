@@ -45,6 +45,18 @@ export async function generateMetadata() {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     ),
+    // og:image / twitter:image are filled in by src/app/opengraph-image.js.
+    openGraph: {
+      type: "website",
+      siteName: s.seo_title,
+      title: s.seo_title,
+      description: s.seo_description,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: s.seo_title,
+      description: s.seo_description,
+    },
   };
 }
 

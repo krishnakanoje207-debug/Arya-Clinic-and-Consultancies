@@ -60,7 +60,7 @@ export default function IntakeForm({ manageToken }) {
             />
           </div>
         ))}
-        {failed && <p className="text-sm text-terracotta-deep">{t("common.error")}</p>}
+        {failed && <p role="alert" className="text-sm text-terracotta-deep">{t("common.error")}</p>}
         <button type="submit" disabled={pending} className="btn-primary w-full">
           {pending ? t("common.loading") : t("booking.intakeSubmit")}
         </button>

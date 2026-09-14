@@ -8,8 +8,11 @@ import { tokenSchema } from "@/lib/validation";
 import BookingFlow from "@/components/BookingFlow";
 
 export async function generateMetadata() {
-  const t = await getTranslations("booking");
-  return { title: t("title") };
+  const [t, tSeo] = await Promise.all([
+    getTranslations("booking"),
+    getTranslations("seo"),
+  ]);
+  return { title: t("title"), description: tSeo("bookDescription") };
 }
 
 export default async function BookPage({ searchParams }) {

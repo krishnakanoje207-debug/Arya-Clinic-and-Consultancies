@@ -427,5 +427,22 @@
     "print": "Print / Save as PDF",
     "computerGenerated": "This is a computer-generated receipt and does not require a signature.",
     "button": "Receipt"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "body": "The page you were looking for has moved or no longer exists. These links will get you back on track.",
+    "home": "Back to home",
+    "book": "Book a consultation"
+  },
+  "cookies": {
+    "text": "This site uses only essential cookies — they remember your language and keep your booking session working. No advertising or tracking cookies are used.",
+    "accept": "Got it",
+    "learn": "Read our Privacy Policy"
+  },
+  "seo": {
+    "bookDescription": "Book an online or clinic homoeopathy consultation with Dr. Seema Prajapati (BHMS). Pick a service, choose a time that suits you and confirm in minutes.",
+    "policyDescription": "Cancellation, rescheduling and refund rules for consultations booked with Dr. Seema Prajapati.",
+    "termsDescription": "The terms that apply when you use this site and book a homoeopathy consultation with Dr. Seema Prajapati.",
+    "privacyDescription": "How Dr. Seema Prajapati collects, uses and protects the personal and health information you share when booking a consultation."
   }
 }
