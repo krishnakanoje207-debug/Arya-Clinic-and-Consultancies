@@ -429,10 +429,10 @@
     "button": "Receipt"
   },
   "notFound": {
-    "title": "Page not found",
-    "body": "The page you were looking for has moved or no longer exists. These links will get you back on track.",
+    "title": "We couldn't find that page",
+    "body": "The link may be old or mistyped. You can book a consultation, or go straight to a condition Dr. Seema treats.",
     "home": "Back to home",
-    "book": "Book a consultation"
+    "quizPrompt": "Not sure which applies to you?"
   },
   "cookies": {
     "text": "This site uses only essential cookies — they remember your language and keep your booking session working. No advertising or tracking cookies are used.",
