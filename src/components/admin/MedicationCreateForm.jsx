@@ -18,6 +18,7 @@ export default function MedicationCreateForm({ patients }) {
     DURATIONS.map((days) => ({ days, enabled: false, amount: "" })),
   );
   const [error, setError] = useState(null);
+  const selected = patients.find((p) => p.id === Number(patientId));
 
   function setRow(days, patch) {
     setRows((rs) => rs.map((r) => (r.days === days ? { ...r, ...patch } : r)));
@@ -71,6 +72,11 @@ export default function MedicationCreateForm({ patients }) {
               </option>
             ))}
           </select>
+          <p className="text-xs text-ink-soft mt-1">
+            {selected?.nextLabel
+              ? `Next visit due: ${selected.nextLabel} — shown to the patient with this order.`
+              : "No next appointment date recorded for this patient."}
+          </p>
         </div>
         <div>
           <label className="block text-sm font-semibold mb-1">

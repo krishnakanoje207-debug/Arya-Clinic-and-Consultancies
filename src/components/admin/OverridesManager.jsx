@@ -11,7 +11,9 @@ const KIND_LABEL = {
   only: "Only these hours",
 };
 
-export default function OverridesManager({ overrides }) {
+/** `date`/`onDateChange` let the Availability calendar fill the Date field
+ * when the doctor clicks a day. */
+export default function OverridesManager({ overrides, date, onDateChange }) {
   const [state, action, pending] = useActionState(upsertOverride, null);
   const [isDeleting, startDelete] = useTransition();
   const ref = useRef(null);
@@ -51,7 +53,14 @@ export default function OverridesManager({ overrides }) {
       <form ref={ref} action={action} className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="block text-sm font-semibold mb-1">Date</span>
-          <input type="date" name="onDate" className={input} required />
+          <input
+            type="date"
+            name="onDate"
+            value={date}
+            onChange={(e) => onDateChange(e.target.value)}
+            className={input}
+            required
+          />
         </label>
         <label className="block">
           <span className="block text-sm font-semibold mb-1">Kind</span>

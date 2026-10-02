@@ -41,6 +41,8 @@ const {
   COMPLETED_HEADERS,
 } = await import("@/lib/sheets");
 const { createAppointmentEvent, calendarConfigured } = await import("@/lib/gcal");
+const { parseConsultationRecord, latestNextAppointment, nextAppointmentsByPatient } =
+  await import("@/lib/consultations");
 
 const NORM = "9999000003"; // test-only phone (last 10 digits); rows deleted below
 const DATE = "2030-03-04"; // far-future IST date, never collides with real data
@@ -143,8 +145,24 @@ try {
   const delayedAppt = await mkAppt(past);
   const toComplete = await mkAppt(istWallToUtc(DATE, "12:30"));
 
-  const completed = await completeAppointmentRow(toComplete.id);
+  // The consultation record entered under "Start consultation".
+  log(parseConsultationRecord({ nextAppointmentOn: "2030-02-31" }) === null, "parseConsultationRecord rejects an impossible date");
+  log(parseConsultationRecord({ nextAppointmentOn: "12/04/2030" }) === null, "parseConsultationRecord rejects a non-ISO date");
+  const blank = parseConsultationRecord({ reportedSymptoms: "  ", medicinesPrescribed: "", nextAppointmentOn: "" });
+  log(blank && blank.reportedSymptoms === null && blank.medicinesPrescribed === null && blank.nextAppointmentOn === null, "blank record fields become null (nothing is required)");
+  log(await latestNextAppointment(patientId) === null, "no next appointment before any completed consult");
+
+  const record = parseConsultationRecord({
+    reportedSymptoms: "Wheezing at night",
+    medicinesPrescribed: "Ars alb 30",
+    nextAppointmentOn: "2030-04-15",
+  });
+  const completed = await completeAppointmentRow(toComplete.id, record);
   log(completed?.status === "completed" && completed?.completedAt != null, "completeAppointmentRow → completed + completed_at set");
+  log(completed?.reportedSymptoms === "Wheezing at night" && completed?.medicinesPrescribed === "Ars alb 30" && completed?.nextAppointmentOn === "2030-04-15", "consultation record saved in the same update");
+  log(await completeAppointmentRow(toComplete.id, record) === undefined, "completing twice is refused (row no longer confirmed)");
+  log(await latestNextAppointment(patientId) === "2030-04-15", "latestNextAppointment returns the recorded date");
+  log((await nextAppointmentsByPatient()).get(patientId) === "2030-04-15", "nextAppointmentsByPatient maps the patient to the date");
 
   const buckets = await getQueueBuckets();
   const inBucket = (b, id) => b.some((r) => r.appt.id === id);
@@ -178,6 +196,8 @@ try {
   log(row.length === COMPLETED_HEADERS.length, `buildCompletedRow width matches headers (${row.length}/${COMPLETED_HEADERS.length})`);
   const assembled = await assembleCompletedRow(completed, "Test Service");
   log(assembled.length === COMPLETED_HEADERS.length, "assembleCompletedRow width matches headers");
+  const col = (h) => assembled[COMPLETED_HEADERS.indexOf(h)];
+  log(col("Reported symptoms") === "Wheezing at night" && col("Medicines prescribed") === "Ars alb 30" && col("Next appointment") === "15 Apr 2030", "sheet row carries the consultation record");
 
   // --- Feature A: shiftTodaysAppointments (Running late) ---
   // Three confirmed appointments today at consecutive IST slots.

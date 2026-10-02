@@ -1,9 +1,11 @@
 import { db } from "@/db";
 import { availabilityRules, services, slotOverrides } from "@/db/schema";
 import EntityManager from "@/components/admin/EntityManager";
-import OverridesManager from "@/components/admin/OverridesManager";
+import ScheduleCalendar from "@/components/admin/ScheduleCalendar";
 import FilledSlotsManager from "@/components/admin/FilledSlotsManager";
 import { deleteRule, upsertRule } from "@/app/admin/actions/content";
+import { getSettings } from "@/lib/settings";
+import { istToday } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,7 @@ const WD_LABEL = Object.fromEntries(WEEKDAYS.map((w) => [Number(w.value), w.labe
 const KIND_LABEL = { open: "Consulting hours", break: "Break" };
 
 export default async function AdminAvailability() {
-  const [rules, overrides, serviceRows] = await Promise.all([
+  const [rules, overrides, serviceRows, { booking_horizon_days }] = await Promise.all([
     db.select().from(availabilityRules).orderBy(availabilityRules.weekday).catch(() => []),
     db.select().from(slotOverrides).orderBy(slotOverrides.onDate).catch(() => []),
     db
@@ -28,6 +30,7 @@ export default async function AdminAvailability() {
       .from(services)
       .orderBy(services.sortOrder)
       .catch(() => []),
+    getSettings(["booking_horizon_days"]),
   ]);
 
   return (
@@ -75,7 +78,12 @@ export default async function AdminAvailability() {
         ]}
       />
 
-      <OverridesManager overrides={overrides} />
+      <ScheduleCalendar
+        rules={rules}
+        overrides={overrides}
+        today={istToday()}
+        horizonDays={Number(booking_horizon_days) || 14}
+      />
 
       <FilledSlotsManager services={serviceRows} />
     </div>

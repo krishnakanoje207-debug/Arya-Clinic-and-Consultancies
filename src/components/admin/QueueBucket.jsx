@@ -1,11 +1,5 @@
 import { formatIst } from "@/lib/time";
-import MarkCompletedButton from "@/components/admin/MarkCompletedButton";
-
-function snippet(text, n = 80) {
-  if (!text) return "";
-  const s = String(text).trim();
-  return s.length > n ? `${s.slice(0, n)}…` : s;
-}
+import QueueRow from "@/components/admin/QueueRow";
 
 /** One queue bucket (remaining / delayed / completed) as a titled table.
  * Shared by /admin/queue and the admin dashboard's Today's queue. */
@@ -30,20 +24,13 @@ export default function Bucket({ title, hint, rows, actionable }) {
             </thead>
             <tbody>
               {rows.map(({ appt, serviceTitle }) => (
-                <tr key={appt.id} className="border-t border-[var(--border)] align-top">
-                  <td className="p-3">
-                    <div className="font-semibold">{appt.patientName}</div>
-                    <div className="text-xs text-ink-soft">{appt.patientPhone}</div>
-                  </td>
-                  <td className="p-3">{serviceTitle}</td>
-                  <td className="p-3 whitespace-nowrap">{formatIst(appt.startAt)}</td>
-                  <td className="p-3 text-ink-soft">{snippet(appt.problemNote)}</td>
-                  {actionable && (
-                    <td className="p-3 text-right">
-                      <MarkCompletedButton id={appt.id} />
-                    </td>
-                  )}
-                </tr>
+                <QueueRow
+                  key={appt.id}
+                  appt={appt}
+                  serviceTitle={serviceTitle}
+                  whenLabel={formatIst(appt.startAt)}
+                  actionable={actionable}
+                />
               ))}
             </tbody>
           </table>

@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
 import { confirmPaidAppointment, expireStaleHolds } from "@/lib/booking";
-import { addMinutes, nowUtc } from "@/lib/time";
+import { addMinutes, istToday, nowUtc } from "@/lib/time";
 import { completeAppointmentRow, shiftTodaysAppointments } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
 import { appendCompletedAppointmentRow } from "@/lib/sheets";
+import { parseConsultationRecord } from "@/lib/consultations";
 import {
   createAppointmentEvent,
   deleteAppointmentEvent,
@@ -68,20 +69,46 @@ export async function cancelAppointment(id) {
 }
 
 /**
- * Mark a confirmed consult completed: sets completed_at and, best-effort,
- * appends the full row to the doctor's Google Sheet. The calendar event is
- * intentionally LEFT in place (the consult happened). Both Google calls no-op
- * when unconfigured and never throw.
+ * Mark a confirmed consult completed with the doctor's consultation record
+ * (symptoms, medicines, next appointment date): sets completed_at and,
+ * best-effort, appends the full row to the doctor's Google Sheet. The
+ * calendar event is intentionally LEFT in place (the consult happened). Both
+ * Google calls no-op when unconfigured and never throw.
  */
-export async function markAppointmentCompleted(id) {
+export async function markAppointmentCompleted(id, input) {
   await guard();
-  const row = await completeAppointmentRow(id);
-  if (row) {
-    await appendCompletedAppointmentRow(row.id);
+  const record = parseConsultationRecord(input);
+  if (!record) return { ok: false, reason: "invalid" };
+  // The date picker's minimum is only a hint; a typed date can still be past.
+  if (record.nextAppointmentOn && record.nextAppointmentOn < istToday()) {
+    return { ok: false, reason: "past_date" };
   }
+  const row = await completeAppointmentRow(id, record);
+  if (!row) return { ok: false, reason: "bad_state" };
+  await appendCompletedAppointmentRow(row.id);
   revalidatePath("/admin/appointments");
   revalidatePath("/admin/queue");
   revalidatePath("/admin");
+  return { ok: true };
+}
+
+/**
+ * Correct the consultation record of an already-completed appointment (e.g.
+ * change the next appointment date). The patient dashboard reads the new
+ * value immediately; the Google Sheet row appended at completion is NOT
+ * rewritten — the CSV download always reflects the current record.
+ */
+export async function saveConsultationRecord(id, input) {
+  await guard();
+  const record = parseConsultationRecord(input);
+  if (!record) return { ok: false, reason: "invalid" };
+  const [row] = await db
+    .update(appointments)
+    .set({ ...record, updatedAt: new Date() })
+    .where(and(eq(appointments.id, Number(id)), eq(appointments.status, "completed")))
+    .returning({ id: appointments.id });
+  if (!row) return { ok: false, reason: "bad_state" };
+  revalidatePath("/admin/appointments");
   return { ok: true };
 }
 

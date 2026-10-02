@@ -9,7 +9,7 @@
     "payTitle": "Pay for your medication",
     "submitted": "Payment submitted — awaiting verification.",
     "preparing": "Payment verified — your medicines are being prepared for dispatch.",
-    "shippedLabel": "Shipped",
+    "shippedLabel": "Delivery scheduled",
     "courierRef": "Courier reference",
     "statusCancelled": "Cancelled",
     "payCta": "Pay & order",
@@ -23,7 +23,7 @@
     "status": {
       "pending_payment": "Awaiting payment",
       "paid": "Payment verified",
-      "shipped": "Shipped",
+      "shipped": "Delivery scheduled",
       "cancelled": "Cancelled"
     },
     "errors": {
@@ -265,6 +265,7 @@
     "yourNote": "You wrote:",
     "bookFollowUp": "Book a follow-up consultation",
     "followUpHint": "Due for your next visit? Your details are filled in automatically.",
+    "nextAppointment": "Your next visit is due on {date}",
     "privateNote": "This is your personal link. Please keep it private and do not share it.",
     "status": {
       "pending_payment": "Awaiting confirmation",

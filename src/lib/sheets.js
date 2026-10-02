@@ -6,7 +6,7 @@ import {
   patients,
   services,
 } from "@/db/schema";
-import { formatIst } from "@/lib/time";
+import { formatIst, formatIstDate } from "@/lib/time";
 import { getAccessToken, googleConfigured } from "@/lib/google-auth";
 
 /**
@@ -41,6 +41,11 @@ export const COMPLETED_HEADERS = [
   "Medication titles",
   "Fee (INR)",
   "UTR",
+  // The doctor's consultation record. Appended at the END so rows written
+  // before these existed still line up under the right headers.
+  "Reported symptoms",
+  "Medicines prescribed",
+  "Next appointment",
 ];
 
 let warned = false;
@@ -77,6 +82,9 @@ export function buildCompletedRow(d) {
     d.medTitles || "",
     d.amountInr == null ? "" : String(d.amountInr),
     d.utr || "",
+    d.reportedSymptoms || "",
+    d.medicinesPrescribed || "",
+    d.nextAppointment || "",
   ];
 }
 
@@ -138,6 +146,9 @@ export async function assembleCompletedRow(appt, serviceTitle) {
     medTitles,
     amountInr: appt.amountInr,
     utr: appt.utr,
+    reportedSymptoms: appt.reportedSymptoms,
+    medicinesPrescribed: appt.medicinesPrescribed,
+    nextAppointment: appt.nextAppointmentOn ? formatIstDate(appt.nextAppointmentOn) : "",
   });
 }
 
@@ -159,18 +170,21 @@ export async function completedRowsForExport() {
 
 /** Make sure row 1 is the shared header row; insert it at the top if the sheet
  * is empty OR its first row is data (e.g. rows appended before the header
- * existed). Returns true when a header was written. */
+ * existed), and rewrite it in place when it is an older, shorter header.
+ * Returns true when a header was written. */
 export async function ensureHeaderRow(token, sheetId) {
   const res = await fetch(
-    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/A1:A1`,
+    `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/1:1`,
     { headers: { authorization: `Bearer ${token}` } },
   );
   if (!res.ok) throw new Error(`Sheets get: ${res.status} ${await res.text()}`);
   const body = await res.json();
-  const a1 = body.values?.[0]?.[0] || "";
-  if (a1 === COMPLETED_HEADERS[0]) return false;
+  const row1 = body.values?.[0] || [];
+  const a1 = row1[0] || "";
+  const isHeader = a1 === COMPLETED_HEADERS[0];
+  if (isHeader && row1.join("\t") === COMPLETED_HEADERS.join("\t")) return false;
 
-  if (a1) {
+  if (a1 && !isHeader) {
     // Row 1 holds data — push everything down one row first.
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=sheets.properties`,

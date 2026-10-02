@@ -5,11 +5,11 @@ import {
   cancelAppointment,
   clearReview,
   confirmAppointment,
-  markAppointmentCompleted,
   rescheduleAppointment,
   saveDoctorNotes,
   saveMeetingLink,
 } from "@/app/admin/actions/appointments";
+import ConsultationForm, { JoinMeetingButton } from "@/components/admin/ConsultationForm";
 
 /** "2026-09-10" + "14:30" as IST wall clock → UTC ISO. IST is a fixed
  * +05:30 offset with no daylight saving, so the offset can be written
@@ -29,6 +29,7 @@ const STATUS_STYLE = {
 export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptUrl }) {
   const [pending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  const [consulting, setConsulting] = useState(false);
   const [meetingLink, setMeetingLink] = useState(appt.meetingLink || "");
   const [notes, setNotes] = useState(appt.doctorNotes || "");
   // Current time as IST wall clock, for the move-appointment inputs.
@@ -140,13 +141,15 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptU
             </button>
           )}
           {appt.status === "confirmed" && (
-            <button
-              onClick={() => run(() => markAppointmentCompleted(appt.id))}
-              disabled={pending}
-              className="btn-ghost text-xs py-1 px-3"
-            >
-              Mark completed
-            </button>
+            <span className="inline-flex gap-1 align-top">
+              <JoinMeetingButton appt={appt} />
+              <button
+                onClick={() => setConsulting((c) => !c)}
+                className="btn-ghost text-xs py-1 px-3"
+              >
+                {consulting ? "Hide consultation" : "Start consultation"}
+              </button>
+            </span>
           )}
           {appt.needsReview && (
             <button
@@ -168,6 +171,13 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptU
           )}
         </td>
       </tr>
+      {consulting && appt.status === "confirmed" && (
+        <tr className="bg-cream-deep">
+          <td colSpan={6} className="p-4">
+            <ConsultationForm appt={appt} onDone={() => setConsulting(false)} />
+          </td>
+        </tr>
+      )}
       {open && (
         <tr className="bg-cream-deep">
           <td colSpan={6} className="p-4">
@@ -246,6 +256,12 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptU
                 </button>
               </div>
               <div>
+                {appt.status === "completed" && (
+                  <div className="mb-4 pb-4 border-b border-[var(--border)]">
+                    <p className="font-semibold mb-2">Consultation record</p>
+                    <ConsultationForm appt={appt} mode="edit" />
+                  </div>
+                )}
                 <p className="font-semibold mb-1">Problem described at booking</p>
                 {appt.problemNote ? (
                   <p className="mb-3">{appt.problemNote}</p>

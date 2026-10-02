@@ -40,6 +40,12 @@ export function formatIst(value, fmt = "dd LLL yyyy, hh:mm a") {
   return dt.setZone(IST_ZONE).toFormat(fmt);
 }
 
+/** Format an IST calendar date ('yyyy-MM-dd', e.g. a date column) — no
+ * timezone shift, since it is already a local date. */
+export function formatIstDate(dateStr, fmt = "dd LLL yyyy") {
+  return DateTime.fromISO(String(dateStr), { zone: IST_ZONE }).toFormat(fmt);
+}
+
 /** IST wall-clock 'HH:mm' for a UTC instant (used to label slots). */
 export function istTimeLabel(value) {
   return formatIst(value, "hh:mm a");

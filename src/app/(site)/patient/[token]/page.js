@@ -4,9 +4,10 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, patients, services } from "@/db/schema";
-import { formatIst, nowUtc } from "@/lib/time";
+import { formatIst, formatIstDate, nowUtc } from "@/lib/time";
 import { tokenSchema } from "@/lib/validation";
 import { listOrdersForPatient } from "@/lib/medications";
+import { latestNextAppointment } from "@/lib/consultations";
 import { canJoin, joinWindow } from "@/lib/meeting";
 import { reviewExistsForPatient } from "@/lib/reviews";
 import {
@@ -107,6 +108,13 @@ export default async function PatientDashboard({ params }) {
 
   const alreadyReviewed = await reviewExistsForPatient(patient.id);
 
+  // The date the doctor asked to see this patient again, from their latest
+  // completed consultation. Shown by the follow-up card and on medication orders.
+  const nextOn = await latestNextAppointment(patient.id);
+  const nextLabel = nextOn
+    ? t("patientDashboard.nextAppointment", { date: formatIstDate(nextOn) })
+    : null;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="font-display text-3xl text-sage-deep font-semibold mb-2">
@@ -196,9 +204,14 @@ export default async function PatientDashboard({ params }) {
           </p>
         )}
         <div className="mt-4 card-warm p-5 flex flex-wrap items-center justify-between gap-3">
-          <p className="text-sm text-ink-soft">
-            {t("patientDashboard.followUpHint")}
-          </p>
+          <div>
+            {nextLabel && (
+              <p className="font-semibold text-sage-deep">{nextLabel}</p>
+            )}
+            <p className="text-sm text-ink-soft">
+              {t("patientDashboard.followUpHint")}
+            </p>
+          </div>
           <Link
             href={`/book?p=${patient.dashboardToken}`}
             className="btn-primary inline-block"
@@ -269,6 +282,10 @@ export default async function PatientDashboard({ params }) {
                     {t(`medication.status.${o.status}`)}
                   </span>
                 </div>
+
+                {nextLabel && o.status !== "cancelled" && (
+                  <p className="text-sm text-ink">{nextLabel}</p>
+                )}
 
                 {payable && (
                   <MedicationOrderCard

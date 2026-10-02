@@ -195,6 +195,11 @@ export const appointments = pgTable("appointments", {
   doctorNotes: text("doctor_notes"), // private consultation record (CCH guideline)
   googleEventId: text("google_event_id"), // synced Google Calendar event id (best-effort)
   completedAt: timestamp("completed_at", { withTimezone: true }), // set when doctor marks completed
+  // Consultation record, entered under "Start consultation" and saved by
+  // "Mark completed" (also appended to the Google Sheet).
+  reportedSymptoms: text("reported_symptoms"),
+  medicinesPrescribed: text("medicines_prescribed"),
+  nextAppointmentOn: date("next_appointment_on"), // IST calendar date; shown to the patient
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

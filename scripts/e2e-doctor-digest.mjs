@@ -128,7 +128,7 @@ try {
     ["mark completed", `Mark the consultation completed`],
     ["medicine order", `Create the medicine order`],
     ["ask for payment", `Ask for the medicine payment`],
-    ["ship", `Ship the paid medicines`],
+    ["ship", `Schedule delivery for paid medicines`],
     ["refill", `Prepare the next medicine order`],
     ["follow-up", `Follow-up due`],
     ["video link", `Add a video link`],

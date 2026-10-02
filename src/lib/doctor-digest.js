@@ -276,7 +276,7 @@ export function renderDoctorDigest(d, { baseUrl, doctorName }) {
     "/admin/medications",
   );
   section(
-    "Ship the paid medicines",
+    "Schedule delivery for paid medicines",
     t.toShip.map(
       (o) =>
         `${o.name} — ${o.order.title}, ₹${o.order.amountInr}, paid ${daysAgo(o.order.paidAt, d.now)} day(s) ago`,

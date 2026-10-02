@@ -1,7 +1,8 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { medicationOrders, patients } from "@/db/schema";
-import { formatIst } from "@/lib/time";
+import { formatIst, formatIstDate } from "@/lib/time";
+import { nextAppointmentsByPatient } from "@/lib/consultations";
 import MedicationCreateForm from "@/components/admin/MedicationCreateForm";
 import MedicationRow from "@/components/admin/MedicationRow";
 import { medicineHasReceipt, receiptPath } from "@/lib/receipts";
@@ -9,7 +10,7 @@ import { medicineHasReceipt, receiptPath } from "@/lib/receipts";
 export const dynamic = "force-dynamic";
 
 export default async function AdminMedications() {
-  const [patientList, orders] = await Promise.all([
+  const [patientRows, orders, nextOn] = await Promise.all([
     db
       .select({ id: patients.id, name: patients.name, phone: patients.phone })
       .from(patients)
@@ -27,7 +28,11 @@ export default async function AdminMedications() {
       .orderBy(desc(medicationOrders.createdAt))
       .limit(500)
       .catch(() => []),
+    nextAppointmentsByPatient().catch(() => new Map()),
   ]);
+  const nextLabel = (patientId) =>
+    nextOn.has(patientId) ? formatIstDate(nextOn.get(patientId)) : null;
+  const patientList = patientRows.map((p) => ({ ...p, nextLabel: nextLabel(p.id) }));
 
   return (
     <div className="space-y-6">
@@ -38,7 +43,9 @@ export default async function AdminMedications() {
         Orders for medicines you parcel yourself after a consultation. Create an
         order, pricing each duration you allow; the patient picks one, enters a
         shipping address and pays securely through Razorpay. Paid orders are
-        confirmed automatically — just mark them shipped once dispatched.
+        confirmed automatically — then use Schedule delivery to copy the
+        patient&apos;s name, phone and address for the courier, and mark the
+        delivery scheduled once it is booked.
       </p>
 
       {patientList.length ? (
@@ -70,6 +77,7 @@ export default async function AdminMedications() {
                   order={order}
                   patientName={patientName}
                   patientPhone={patientPhone}
+                  nextLabel={nextLabel(order.patientId)}
                   createdLabel={formatIst(order.createdAt)}
                   receiptUrl={
                     medicineHasReceipt(order) ? receiptPath("medicine", order.id) : null

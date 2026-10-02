@@ -112,12 +112,14 @@ export async function getQueueBuckets() {
  * No auth/guard and no side effects (Sheet/Calendar) — those belong to the
  * server action wrapper (src/app/admin/actions/appointments.js). Kept here so
  * the transition is reusable and directly testable (scripts/e2e-admin-ops.mjs).
+ * `record` is the parsed consultation record (see src/lib/consultations.js),
+ * written in the same UPDATE so status and record can never disagree.
  * Returns the updated row, or undefined when the row wasn't confirmed. */
-export async function completeAppointmentRow(id) {
+export async function completeAppointmentRow(id, record = {}) {
   const now = nowUtc();
   const [row] = await db
     .update(appointments)
-    .set({ status: "completed", completedAt: now, updatedAt: now })
+    .set({ ...record, status: "completed", completedAt: now, updatedAt: now })
     .where(and(eq(appointments.id, Number(id)), eq(appointments.status, "confirmed")))
     .returning();
   return row;
