@@ -98,7 +98,8 @@ export async function createAppointmentEvent(appt) {
     // one on the OAuth path. conferenceDataVersion=1 is mandatory: without the
     // query param the request is ignored even with a valid user token.
     const oauthToken = await getOAuthAccessToken();
-    if (oauthToken) {
+    // In-person clinic visits get no video room (nor a "Join" button).
+    if (oauthToken && appt.mode === "online") {
       body.conferenceData = {
         createRequest: {
           requestId: `appt-${appt.id}-${Date.now()}`,
@@ -122,7 +123,13 @@ export async function createAppointmentEvent(appt) {
     const { id, hangoutLink } = await res.json();
     const set = {};
     if (id) set.googleEventId = id;
-    if (hangoutLink && (await meetingLinkIsReplaceable(appt.meetingLink))) {
+    // The calendar's own "add Meet to new events" setting can attach a room
+    // even when none was requested; a clinic visit must still get none.
+    if (
+      hangoutLink &&
+      appt.mode === "online" &&
+      (await meetingLinkIsReplaceable(appt.meetingLink))
+    ) {
       set.meetingLink = hangoutLink;
     }
     if (Object.keys(set).length) {

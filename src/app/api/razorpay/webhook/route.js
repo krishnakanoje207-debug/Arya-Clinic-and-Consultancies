@@ -1,7 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, medicationOrders } from "@/db/schema";
 import {
+  fetchRazorpayOrder,
   refundRazorpayPayment,
   razorpayConfigured,
   verifyWebhookSignature,
@@ -76,6 +77,9 @@ async function handleCaptured(payment) {
     .where(eq(appointments.razorpayOrderId, orderId));
   if (appt) {
     if (appt.status === "confirmed") return "noop";
+    // Already refunded: a redelivered event must neither refund again nor,
+    // if the slot has since freed up, confirm a consult whose money went back.
+    if (appt.razorpayRefundId) return "noop";
     const res = await confirmPaidAppointment(appt.id, { paymentId });
     if (res.ok) {
       if (res.already) return "noop";
@@ -90,8 +94,8 @@ async function handleCaptured(payment) {
     }
     // slot_taken / bad_state / not_found → the patient paid for a slot they can
     // no longer have: refund to source and prompt them to rebook.
-    await autoRefundAppointment(appt, paymentId);
-    return "refunded";
+    const refundId = await autoRefundAppointment(appt, paymentId);
+    return refundId ? "refunded" : "refund_failed";
   }
 
   const [order] = await db
@@ -100,40 +104,85 @@ async function handleCaptured(payment) {
     .where(eq(medicationOrders.razorpayOrderId, orderId));
   if (order) {
     if (order.status === "paid" || order.status === "shipped") return "noop";
+    if (order.status === "cancelled") {
+      // The doctor cancelled the order while the patient was still paying.
+      // The money came in anyway: send it back, and keep the payment id on the
+      // row so it shows in the admin even if the refund call fails.
+      if (order.razorpayRefundId) return "noop";
+      const refundId = await tryRefund(paymentId, {
+        reason: "order_cancelled",
+        medicationOrderId: String(order.id),
+      });
+      await db
+        .update(medicationOrders)
+        .set({
+          razorpayPaymentId: paymentId || null,
+          razorpayRefundId: refundId,
+          updatedAt: new Date(),
+        })
+        .where(eq(medicationOrders.id, order.id));
+      return refundId ? "refunded" : "refund_failed";
+    }
     const res = await markMedicationPaidRow(order.id, { paymentId });
     return res.ok ? "paid" : "noop";
   }
 
+  // No row holds this order any more: the patient changed the medicine
+  // duration between two taps of Pay (a new price needs a new Razorpay order,
+  // which replaced this one on the row) and then completed the older one.
+  // The order itself still says it was ours; send the money back so the
+  // patient can pay the current order. Anything else is left alone.
+  const rzpOrder = await fetchRazorpayOrder(orderId);
+  if (rzpOrder?.notes?.kind === "medication") {
+    const refundId = await tryRefund(paymentId, {
+      reason: "superseded_order",
+      medicationOrderId: String(rzpOrder.notes.medicationOrderId || ""),
+    });
+    if (!refundId) {
+      console.error(
+        `[razorpay webhook] refund of superseded medication payment ${paymentId} failed — refund it from the Razorpay dashboard`,
+      );
+    }
+    return refundId ? "refunded" : "refund_failed";
+  }
   return "unmatched";
 }
 
-/** Refund a captured payment whose appointment slot is no longer available,
- * stamp the row, and notify the patient. The refund API call is best-effort:
- * even if it fails (or Razorpay is unconfigured, e.g. under test), the row is
- * still marked and the patient is still told, so no payment is silently lost. */
-async function autoRefundAppointment(appt, paymentId) {
-  let refundId = null;
+/** Refund a captured payment in full. Returns the refund id, or null when
+ * Razorpay is unconfigured or the call failed (logged, never thrown). */
+async function tryRefund(paymentId, notes) {
   try {
     if (razorpayConfigured() && paymentId) {
-      const refund = await refundRazorpayPayment(paymentId, {
-        notes: { reason: "slot_unavailable", appointmentId: String(appt.id) },
-      });
-      refundId = refund?.id || null;
+      const refund = await refundRazorpayPayment(paymentId, { notes });
+      return refund?.id || null;
     }
   } catch (err) {
     console.error("[razorpay webhook] refund failed:", err?.message || err);
   }
+  return null;
+}
+
+/** Refund a captured payment whose appointment slot is no longer available,
+ * stamp the row, and tell the patient. If the refund could not be made, the
+ * patient is NOT told it was, and the row is flagged for the doctor instead
+ * (it shows under "needs attention" on the dashboard) so the money is never
+ * silently kept. */
+async function autoRefundAppointment(appt, paymentId) {
+  const refundId = await tryRefund(paymentId, {
+    reason: "slot_unavailable",
+    appointmentId: String(appt.id),
+  });
   const [row] = await db
     .update(appointments)
     .set({
       razorpayPaymentId: paymentId || null,
       razorpayRefundId: refundId,
-      needsReview: false,
+      needsReview: !refundId,
       updatedAt: new Date(),
     })
     .where(eq(appointments.id, appt.id))
     .returning();
-  await dispatchNotification("payment_refunded", row);
+  if (refundId) await dispatchNotification("payment_refunded", row);
   return refundId;
 }
 
@@ -145,10 +194,14 @@ async function handleFailed(payment) {
     .from(appointments)
     .where(eq(appointments.razorpayOrderId, orderId));
   if (appt && appt.status === "pending_payment") {
+    // Guarded in the UPDATE too: a later attempt on the same order may have
+    // been captured and confirmed in between, and must not be expired.
     await db
       .update(appointments)
       .set({ status: "expired", updatedAt: new Date() })
-      .where(eq(appointments.id, appt.id));
+      .where(
+        and(eq(appointments.id, appt.id), eq(appointments.status, "pending_payment")),
+      );
     return "released";
   }
   // Medication orders are left pending on a failed attempt (locked spec).

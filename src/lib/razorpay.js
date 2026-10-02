@@ -51,6 +51,18 @@ export async function createRazorpayOrder({ amountInr, receipt, notes }) {
   return res.json();
 }
 
+/** Fetch an order (for its `notes`). Returns null on any failure. */
+export async function fetchRazorpayOrder(orderId) {
+  try {
+    const res = await fetch(`${API}/orders/${encodeURIComponent(orderId)}`, {
+      headers: { authorization: authHeader() },
+    });
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Refund a captured payment to source (used by the webhook when a paid slot
  * was already taken). Full refund by default. */
 export async function refundRazorpayPayment(paymentId, { notes } = {}) {

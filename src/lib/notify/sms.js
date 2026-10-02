@@ -14,6 +14,8 @@ export function smsConfigured() {
 function normalizePhone(phone) {
   const digits = String(phone).replace(/[^\d+]/g, "");
   if (/^\d{10}$/.test(digits)) return `+91${digits}`;
+  // Trunk-prefixed domestic form, e.g. 09876543210.
+  if (/^0\d{10}$/.test(digits)) return `+91${digits.slice(1)}`;
   if (digits.startsWith("+")) return digits;
   return `+${digits}`;
 }

@@ -17,24 +17,31 @@ import { tokenSchema } from "@/lib/validation";
 export async function startMedicationPaymentAction(dashboardToken, payload) {
   const res = await beginMedicationPayment(dashboardToken, payload);
   if (!res.ok) return res;
-  const { order, patient } = res;
+  const { order, patient, priorAmountInr } = res;
 
-  let rzp;
-  try {
-    rzp = await createRazorpayOrder({
-      amountInr: order.amountInr,
-      receipt: `meds_${order.id}`,
-      notes: { kind: "medication", medicationOrderId: String(order.id) },
-    });
-  } catch (err) {
-    console.error("[razorpay] medication order create failed:", err?.message || err);
-    return { ok: false, reason: "payment_init_failed" };
+  // The webhook finds the order by the Razorpay order id stored on the row, so
+  // replacing it on every tap of Pay would orphan an earlier attempt the
+  // patient may already have paid (a UPI app switch that reloads the page, a
+  // collect request approved late). Same price → same Razorpay order.
+  let rzpOrderId = order.razorpayOrderId;
+  if (!rzpOrderId || priorAmountInr !== order.amountInr) {
+    try {
+      const rzp = await createRazorpayOrder({
+        amountInr: order.amountInr,
+        receipt: `meds_${order.id}`,
+        notes: { kind: "medication", medicationOrderId: String(order.id) },
+      });
+      rzpOrderId = rzp.id;
+    } catch (err) {
+      console.error("[razorpay] medication order create failed:", err?.message || err);
+      return { ok: false, reason: "payment_init_failed" };
+    }
+
+    await db
+      .update(medicationOrders)
+      .set({ razorpayOrderId: rzpOrderId, updatedAt: new Date() })
+      .where(eq(medicationOrders.id, order.id));
   }
-
-  await db
-    .update(medicationOrders)
-    .set({ razorpayOrderId: rzp.id, updatedAt: new Date() })
-    .where(eq(medicationOrders.id, order.id));
 
   const s = await getSettings(["payee_name"]);
 
@@ -42,7 +49,7 @@ export async function startMedicationPaymentAction(dashboardToken, payload) {
     ok: true,
     payment: {
       keyId: razorpayKeyId(),
-      orderId: rzp.id,
+      orderId: rzpOrderId,
       amountInr: order.amountInr,
       payeeName: s.payee_name || "Dr. Seema",
       prefill: {

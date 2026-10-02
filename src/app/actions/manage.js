@@ -1,10 +1,16 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
 import { tokenSchema } from "@/lib/validation";
-import { HOLD_MINUTES, expireStaleHolds, overlapsFilledSlot } from "@/lib/booking";
+import {
+  HOLD_MINUTES,
+  expireStaleHolds,
+  isExclusionViolation,
+  isOfferedSlot,
+  overlapsFilledSlot,
+} from "@/lib/booking";
 import { addMinutes, nowUtc } from "@/lib/time";
 import { dispatchNotification } from "@/lib/notify";
 import { getSettings } from "@/lib/settings";
@@ -82,6 +88,14 @@ export async function rescheduleByToken(token, startAtIso) {
 
   const endAt = addMinutes(startAt, duration || 30);
 
+  // The new time must be a slot the calendar offers, exactly as for a new
+  // booking: working hours, breaks, days off, the horizon and the buffer live
+  // only there, so without this a crafted request could move straight past
+  // them. (The admin's own reschedule deliberately skips this.)
+  if (!(await isOfferedSlot(appt.serviceId, appt.mode, startAt))) {
+    return { ok: false, reason: "slot_taken" };
+  }
+
   // Can't move onto a slot the doctor marked as booked (deliberate scarcity).
   if (await overlapsFilledSlot(startAt, endAt)) {
     return { ok: false, reason: "slot_taken" };
@@ -103,16 +117,22 @@ export async function rescheduleByToken(token, startAtIso) {
         reminderSent: false, // the reminder should fire for the new date
         updatedAt: nowUtc(),
       })
-      .where(eq(appointments.id, appt.id))
+      // expireStaleHolds above may just have expired this very row (an unpaid
+      // hold that lapsed); a dead booking must not be moved and announced.
+      .where(
+        and(
+          eq(appointments.id, appt.id),
+          inArray(appointments.status, ["pending_payment", "confirmed"]),
+        ),
+      )
       .returning();
-    if (updated) {
-      await dispatchNotification("rescheduled", updated);
-      // Update (or create-if-confirmed-and-missing) the calendar event.
-      await updateAppointmentEvent(updated);
-    }
+    if (!updated) return { ok: false, reason: "not_reschedulable" };
+    await dispatchNotification("rescheduled", updated);
+    // Update (or create-if-confirmed-and-missing) the calendar event.
+    await updateAppointmentEvent(updated);
     return { ok: true };
   } catch (err) {
-    if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };
+    if (isExclusionViolation(err)) return { ok: false, reason: "slot_taken" };
     throw err;
   }
 }

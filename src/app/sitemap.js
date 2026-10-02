@@ -3,6 +3,11 @@ import { quizSlugs } from "@/lib/quiz-data";
 
 /** Public sitemap for SEO. Only public, indexable pages — /admin, /book
  * payment steps, /manage/* tokens and API routes are intentionally out. */
+
+// Without this the sitemap is frozen at build time, and a condition the
+// doctor adds in the admin would stay out of it until the next deploy.
+export const revalidate = 3600;
+
 export default async function sitemap() {
   const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
   const paths = ["", "/book", "/testimonials", "/privacy", "/policy", "/terms"];

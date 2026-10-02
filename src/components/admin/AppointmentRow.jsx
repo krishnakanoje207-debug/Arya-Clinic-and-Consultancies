@@ -58,6 +58,25 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptU
     });
   }
 
+  function move() {
+    // An emptied date or time field would make istWallToIso throw.
+    if (!moveDate || !moveTime) {
+      alert("Enter both a date and a time.");
+      return;
+    }
+    startTransition(async () => {
+      const res = await rescheduleAppointment(appt.id, istWallToIso(moveDate, moveTime));
+      if (res?.ok !== false) return;
+      alert(
+        {
+          slot_taken: "Another appointment is already at that time. Pick a different time.",
+          in_past: "That time has already passed. Pick a future date and time.",
+          not_reschedulable: "Only pending or confirmed appointments can be moved.",
+        }[res.reason] || "Could not move this appointment.",
+      );
+    });
+  }
+
   return (
     <>
       <tr className="border-t border-[var(--border)] align-top">
@@ -194,14 +213,7 @@ export default function AppointmentRow({ appt, serviceTitle, whenLabel, receiptU
                         className="rounded border border-[var(--border)] px-2 py-1"
                       />
                       <button
-                        onClick={() =>
-                          run(() =>
-                            rescheduleAppointment(
-                              appt.id,
-                              istWallToIso(moveDate, moveTime),
-                            ),
-                          )
-                        }
+                        onClick={move}
                         disabled={pending}
                         className="btn-ghost text-xs py-1 px-3"
                       >

@@ -107,7 +107,10 @@ export default function EntityManager({
                     <button
                       onClick={() => {
                         if (confirm("Delete this item?"))
-                          startDelete(() => deleteAction(item.id));
+                          startDelete(async () => {
+                            const res = await deleteAction(item.id);
+                            if (res?.error) alert(res.error);
+                          });
                       }}
                       disabled={isDeleting}
                       className="text-xs text-red-600 hover:underline"

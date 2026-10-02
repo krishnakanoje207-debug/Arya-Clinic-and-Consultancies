@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { appointments, services } from "@/db/schema";
 import { requireAdmin } from "@/lib/admin-auth";
-import { confirmPaidAppointment } from "@/lib/booking";
+import { confirmPaidAppointment, expireStaleHolds } from "@/lib/booking";
 import { addMinutes, nowUtc } from "@/lib/time";
 import { completeAppointmentRow, shiftTodaysAppointments } from "@/lib/admin";
 import { dispatchNotification } from "@/lib/notify";
@@ -92,7 +92,20 @@ export async function markAppointmentCompleted(id) {
  * (both never throw by design). Returns { ok, count }. */
 export async function runningLate(minutes) {
   await guard();
-  const shifted = await shiftTodaysAppointments(minutes);
+  // A lapsed hold still sits inside the exclusion constraint until expired,
+  // and would refuse the shift as if it were a real booking.
+  await expireStaleHolds();
+  let shifted;
+  try {
+    shifted = await shiftTodaysAppointments(minutes);
+  } catch (err) {
+    // The shift is one atomic batch: if it would run into a booking outside
+    // it (a patient mid-payment, say), nothing moves.
+    if (err?.code === "23P01" || err?.cause?.code === "23P01") {
+      return { ok: false, reason: "slot_taken" };
+    }
+    throw err;
+  }
   for (const appt of shifted) {
     await updateAppointmentEvent(appt);
     await dispatchNotification("rescheduled", appt);
@@ -156,6 +169,8 @@ export async function rescheduleAppointment(id, startAtIso) {
     return { ok: false, reason: "not_reschedulable" };
   }
 
+  // A lapsed hold would otherwise refuse the move as if it were a booking.
+  await expireStaleHolds();
   try {
     const [updated] = await db
       .update(appointments)

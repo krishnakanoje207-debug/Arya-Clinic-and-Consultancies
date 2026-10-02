@@ -7,8 +7,11 @@ import { formatIst } from "@/lib/time";
 /** CSV export of all appointments (Admin ▸ Appointments ▸ Export).
  * Route handlers bypass the panel layout, so auth is checked here. */
 function csvCell(v) {
-  const s = v == null ? "" : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let s = v == null ? "" : String(v);
+  // Names and notes are typed by patients: a leading = + - @ would run as a
+  // formula when the doctor opens the file in Excel. A leading ' keeps it text.
+  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
 export async function GET() {

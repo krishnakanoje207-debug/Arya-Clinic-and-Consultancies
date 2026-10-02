@@ -119,7 +119,19 @@ export async function upsertService(prevState, fd) {
 }
 export async function deleteService(id) {
   await guard();
-  await db.delete(services).where(eq(services.id, Number(id)));
+  try {
+    await db.delete(services).where(eq(services.id, Number(id)));
+  } catch (err) {
+    // Appointments keep a reference to their service, so a service that has
+    // ever been booked can't be deleted (foreign key, 23503).
+    if (err?.code === "23503" || err?.cause?.code === "23503") {
+      return {
+        ok: false,
+        error: "This service has bookings, so it can't be deleted. Untick Active to hide it instead.",
+      };
+    }
+    throw err;
+  }
   refresh();
 }
 

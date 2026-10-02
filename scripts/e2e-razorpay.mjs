@@ -13,9 +13,9 @@
  * asserts the "paid but the slot was already retaken" path marks the row for
  * refund; and (e) asserts a medication order is marked paid by the webhook.
  *
- * The refund step uses a fabricated payment id, so the real refund API call is
- * expected to fail and is swallowed by the route — we assert the code path via
- * the webhook's `action` flag ("refunded"), per the locked spec.
+ * The refund steps use fabricated payment ids, so the real refund API call is
+ * expected to fail — we assert the route reports it ("refund_failed") and flags
+ * the row for the doctor instead of telling the patient they were refunded.
  *
  * Env: DATABASE_URL (local proxy), RAZORPAY_* keys, optional E2E_BASE_URL
  * (default http://localhost:3000).
@@ -167,10 +167,21 @@ try {
     returning id`;
   const payLost = `pay_e2e_${randomUUID().slice(0, 12)}`;
   const r3 = await postWebhook(captured(orderLost, payLost));
-  log(r3.status === 200 && r3.json?.action === "refunded", `captured on lost slot → 200 action=refunded (got ${r3.status}/${r3.json?.action})`);
-  const [c3] = await sql`select status, razorpay_payment_id, razorpay_refund_id from appointments where id = ${a3.id}`;
+  // The payment id is fabricated, so Razorpay refuses the refund: the row must
+  // be flagged for the doctor rather than the patient being told "refunded".
+  log(r3.status === 200 && r3.json?.action === "refund_failed", `captured on lost slot, refund refused → 200 action=refund_failed (got ${r3.status}/${r3.json?.action})`);
+  const [c3] = await sql`select status, razorpay_payment_id, razorpay_refund_id, needs_review from appointments where id = ${a3.id}`;
   log(c3.status !== "confirmed", `late row #${a3.id} was NOT confirmed (status ${c3.status})`);
   log(c3.razorpay_payment_id === payLost, `payment id stamped on the refunded row for the record`);
+  log(c3.needs_review === true && c3.razorpay_refund_id === null, `failed refund flags the row for the doctor (needs_review ${c3.needs_review})`);
+
+  // ── (d') a redelivered event on an already-refunded row is a no-op ────────
+  await sql`update appointments set razorpay_refund_id = 'rfnd_e2e_done', needs_review = false where id = ${a3.id}`;
+  await sql`delete from appointments where patient_name = 'E2E Holder' and patient_phone = ${PHONE}`; // slot is free again
+  const r3b = await postWebhook(captured(orderLost, payLost));
+  const [c3b] = await sql`select status, razorpay_refund_id from appointments where id = ${a3.id}`;
+  log(r3b.json?.action === "noop" && c3b.status !== "confirmed" && c3b.razorpay_refund_id === "rfnd_e2e_done",
+    `redelivery after refund → noop, not confirmed, refund id kept (got ${r3b.json?.action}/${c3b.status}/${c3b.razorpay_refund_id})`);
 
   // ── (e) medication order paid via webhook ─────────────────────────────────
   const orderMeds = `order_e2e_meds_${randomUUID().slice(0, 8)}`;
@@ -187,6 +198,30 @@ try {
   log(m1.status === "paid", `medication order #${med.id} is paid`);
   const r5 = await postWebhook(captured(orderMeds, payMeds, { kind: "medication" }));
   log(r5.json?.action === "noop", `medication re-POST → action=noop (got ${r5.json?.action})`);
+
+  // ── (f) payment lands on a medication order the doctor cancelled ──────────
+  const orderCancelled = `order_e2e_medx_${randomUUID().slice(0, 8)}`;
+  const [medX] = await sql`
+    insert into medication_orders (patient_id, title, options, chosen_duration_days, amount_inr,
+      status, address, razorpay_order_id)
+    values (${pat.id}, 'E2E Cancelled Meds', ${JSON.stringify([{ days: 30, amountInr: svc.fee_inr }])}::jsonb,
+      30, ${svc.fee_inr}, 'cancelled', 'E2E address', ${orderCancelled})
+    returning id`;
+  const payX = `pay_e2e_${randomUUID().slice(0, 12)}`;
+  const r6 = await postWebhook(captured(orderCancelled, payX, { kind: "medication" }));
+  const [mx] = await sql`select status, razorpay_payment_id from medication_orders where id = ${medX.id}`;
+  log(r6.json?.action === "refund_failed" && mx.status === "cancelled" && mx.razorpay_payment_id === payX,
+    `captured on cancelled order → refund attempted, payment id kept, still cancelled (got ${r6.json?.action}/${mx.status})`);
+
+  // ── (g) payment on a medication order the row no longer points at ─────────
+  // (patient changed the duration between two taps of Pay). A REAL test order
+  // carrying our notes, referenced by no row: refund is attempted.
+  const superseded = await createTestOrder(svc.fee_inr, { kind: "medication", medicationOrderId: String(medX.id) });
+  const r7 = await postWebhook(captured(superseded.id, `pay_e2e_${randomUUID().slice(0, 12)}`, { kind: "medication" }));
+  log(r7.json?.action === "refund_failed", `captured on superseded medication order → refund attempted (got ${r7.json?.action})`);
+  // A captured payment on an order that isn't ours is left alone.
+  const r8 = await postWebhook(captured(`order_e2e_foreign_${randomUUID().slice(0, 8)}`, `pay_e2e_${randomUUID().slice(0, 12)}`));
+  log(r8.json?.action === "unmatched", `captured on unknown order → unmatched (got ${r8.json?.action})`);
 } finally {
   await sql`delete from appointments where patient_phone = ${PHONE}`;
   await sql`delete from medication_orders where patient_id in (select id from patients where phone = ${NORM})`;

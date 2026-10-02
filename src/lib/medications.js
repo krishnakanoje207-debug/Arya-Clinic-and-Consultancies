@@ -75,7 +75,7 @@ export async function beginMedicationPayment(dashboardToken, payload) {
     .set({ address, updatedAt: now })
     .where(eq(patients.id, patient.id));
 
-  return { ok: true, order: updated, patient };
+  return { ok: true, order: updated, patient, priorAmountInr: order.amountInr };
 }
 
 /**

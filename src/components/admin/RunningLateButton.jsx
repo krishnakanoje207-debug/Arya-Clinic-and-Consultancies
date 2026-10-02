@@ -42,6 +42,12 @@ export default function RunningLateButton() {
           Shifted {result.count} appointment{result.count === 1 ? "" : "s"}
         </span>
       )}
+      {!pending && result?.ok === false && (
+        <span className="text-xs text-terracotta-deep">
+          Nothing moved — that would run into another booking. Move patients
+          one at a time from Appointments instead.
+        </span>
+      )}
     </div>
   );
 }

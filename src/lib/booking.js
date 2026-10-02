@@ -463,8 +463,9 @@ export async function createBooking({
       .returning();
     return { ok: true, appointment: row, dashboardToken: patientRow.dashboardToken };
   } catch (err) {
-    // 23P01 = exclusion_violation (slot overlaps an active booking).
-    if (err?.code === "23P01") return { ok: false, reason: "slot_taken" };
+    // 23P01 = exclusion_violation (slot overlaps an active booking). Drizzle
+    // wraps the driver error, so the code is on err.cause, not err.
+    if (isExclusionViolation(err)) return { ok: false, reason: "slot_taken" };
     throw err;
   }
 }
@@ -538,11 +539,29 @@ export async function confirmPaidAppointment(id, opts = {}) {
     }
   }
   try {
+    // Only flip the row from the status it was read in: a redelivered webhook
+    // racing this one, or a cancel landing in between, must not confirm it
+    // twice (two calendar events, two "confirmed" messages) or revive it.
     const [row] = await db
       .update(appointments)
       .set(set)
-      .where(eq(appointments.id, Number(id)))
+      .where(
+        and(
+          eq(appointments.id, Number(id)),
+          eq(appointments.status, current.status),
+        ),
+      )
       .returning();
+    if (!row) {
+      const [latest] = await db
+        .select()
+        .from(appointments)
+        .where(eq(appointments.id, Number(id)));
+      if (latest?.status === "confirmed") {
+        return { ok: true, already: true, appointment: latest };
+      }
+      return { ok: false, reason: "bad_state", appointment: latest ?? current };
+    }
     return { ok: true, appointment: row };
   } catch (err) {
     // 23P01 = exclusion_violation (the slot was retaken while the hold lapsed).
@@ -556,7 +575,7 @@ export async function confirmPaidAppointment(id, opts = {}) {
 
 /** True when a thrown DB error is a Postgres exclusion_violation (23P01),
  * whether the code sits on the error, its cause, or only in the message. */
-function isExclusionViolation(err) {
+export function isExclusionViolation(err) {
   return (
     err?.code === "23P01" ||
     err?.cause?.code === "23P01" ||

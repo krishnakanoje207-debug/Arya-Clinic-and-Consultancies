@@ -232,8 +232,11 @@ export default function BookingFlow({
         patientToken: bookingFor === "self" ? patientToken : null,
       });
       if (!res.ok) {
+        // A slot whose start passed while the form was being filled is just
+        // as gone as one someone else took.
+        const gone = res.reason === "slot_taken" || res.reason === "in_past";
         const msg =
-          res.reason === "slot_taken"
+          gone
             ? t("booking.slotTaken")
             : res.reason === "too_many_holds"
               ? t("booking.tooManyHolds")
@@ -241,7 +244,7 @@ export default function BookingFlow({
                 ? t("booking.payInitFailed")
                 : t("common.required");
         setError(msg);
-        if (res.reason === "slot_taken") setSlot(null);
+        if (gone) setSlot(null);
         return;
       }
       setBooking(res.booking);

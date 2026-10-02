@@ -14,8 +14,11 @@ export default function CookieNotice() {
   const t = useTranslations("cookies");
   const [show, setShow] = useState(false);
 
+  // localStorage only exists after mount, so reading it here is a legitimate
+  // external → React sync (rendering it during SSR would mismatch hydration).
   useEffect(() => {
     try {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (!localStorage.getItem(KEY)) setShow(true);
     } catch {
       /* storage blocked — stay quiet rather than nag on every page */
