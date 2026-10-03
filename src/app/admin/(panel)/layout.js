@@ -4,7 +4,7 @@ import { requireAdmin } from "@/lib/admin-auth";
 import { logoutAction } from "@/app/admin/actions/auth";
 import AdminMobileNav from "@/components/admin/AdminMobileNav";
 
-export const metadata = { title: "Admin" };
+export const metadata = { title: "Admin", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 /* Grouped by how often the doctor actually needs each page: the day's work

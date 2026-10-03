@@ -218,6 +218,12 @@ export default function SettingsForm({ settings }) {
         />
         <Field label="SEO title" name="seo_title" defaultValue={s.seo_title} />
         <Field label="SEO description" name="seo_description" defaultValue={s.seo_description} textarea />
+        <Field
+          label="Google Search Console verification"
+          name="google_site_verification"
+          defaultValue={s.google_site_verification}
+          hint="In Search Console choose the 'HTML tag' method and paste the tag (or just its content code) here. Keep it here after verifying; removing it un-verifies the site."
+        />
         <Field label="Medical disclaimer" name="medical_disclaimer" defaultValue={s.medical_disclaimer} textarea />
       </Section>
 

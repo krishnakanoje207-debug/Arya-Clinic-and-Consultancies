@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import LoginForm from "@/components/admin/LoginForm";
 
-export const metadata = { title: "Admin sign in" };
+export const metadata = { title: "Admin sign in", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 
 export default async function AdminLoginPage() {

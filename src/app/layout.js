@@ -27,16 +27,19 @@ const FALLBACK_SEO = {
 };
 
 export async function generateMetadata() {
-  const s = await getSettings(["seo_title", "seo_description"]).catch(
-    () => FALLBACK_SEO,
-  );
+  const s = await getSettings([
+    "seo_title",
+    "seo_description",
+    "google_site_verification",
+  ]).catch(() => FALLBACK_SEO);
   return {
     title: { default: s.seo_title, template: `%s · ${s.seo_title}` },
     description: s.seo_description,
     manifest: "/manifest.webmanifest",
     icons: {
       icon: [
-        { url: "/favicon.ico", sizes: "16x16 32x32 48x48" },
+        // ?v= busts the default favicon browsers cached before the ARYA one.
+        { url: "/favicon.ico?v=2", sizes: "16x16 32x32 48x48" },
         { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
         { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
       ],
@@ -45,18 +48,27 @@ export async function generateMetadata() {
     metadataBase: new URL(
       process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
     ),
+    // "./" resolves against each page's own path, so every page declares
+    // itself canonical (drops ?query variants and other hostnames).
+    alternates: { canonical: "./" },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: { "max-image-preview": "large", "max-snippet": -1 },
+    },
+    verification: s.google_site_verification
+      ? { google: s.google_site_verification }
+      : undefined,
     // og:image / twitter:image are filled in by src/app/opengraph-image.js.
+    // Title and description are left out on purpose: Next then fills them
+    // from each page's own title/description instead of the homepage's.
     openGraph: {
       type: "website",
       siteName: s.seo_title,
-      title: s.seo_title,
-      description: s.seo_description,
+      locale: "en_IN",
+      url: "./",
     },
-    twitter: {
-      card: "summary_large_image",
-      title: s.seo_title,
-      description: s.seo_description,
-    },
+    twitter: { card: "summary_large_image" },
   };
 }
 

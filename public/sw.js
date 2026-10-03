@@ -1,7 +1,7 @@
 /* Minimal offline-fallback service worker (registered client-side).
  * Network-first for navigations; falls back to /offline when the network
  * is unavailable. Static assets are cached opportunistically. */
-const CACHE = "drseema-v1";
+const CACHE = "drseema-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {

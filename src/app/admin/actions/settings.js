@@ -36,6 +36,12 @@ export async function saveSettings(prevState, formData) {
   for (const k of textKeys) {
     await setSetting(k, String(formData.get(k) ?? ""));
   }
+  // Search Console hands out a whole <meta> tag; keep only its content value.
+  const verification = String(formData.get("google_site_verification") ?? "").trim();
+  await setSetting(
+    "google_site_verification",
+    verification.match(/content=["']([^"']+)["']/)?.[1] ?? verification,
+  );
 
   // Clinic mode toggle → site_mode enum.
   await setSetting(

@@ -6,7 +6,10 @@ import { formatIst, nowUtc } from "@/lib/time";
 import { canJoin, joinWindow } from "@/lib/meeting";
 import ManageActions from "@/components/ManageActions";
 
-export const metadata = { title: "Manage your appointment" };
+export const metadata = {
+  title: "Manage your appointment",
+  robots: { index: false, follow: false },
+};
 
 export default async function ManagePage({ params }) {
   const { token } = await params;
